@@ -1,0 +1,18 @@
+Package: timeBlocks
+Type: Package
+Title: Converts Serial Measurement Data Into Longitudinal trajectory of equally sized time blocks
+Version: 0.1.0
+Authors@R: person("Stefan", "Mutter", email = "stefan.mutter@gmail.com",
+                  role = c("aut", "cre"))
+Description: More about what it does (maybe more than one line)
+    Use four spaces when indenting paragraphs within the Description.
+Depends: R (>= 3.4.3)
+Imports:
+  dplyr (>= 0.7.4),
+  magrittr (>= 1.5),
+  plyr (>= 1.8.4),
+  readr (>= 1.1.1)
+License: CC-BY-SA-4.0
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 6.0.1
