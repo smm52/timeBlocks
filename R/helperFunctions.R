@@ -7,6 +7,7 @@
 #' @param yes what happens if yes condition is met
 #' @param no what happens if no condition is not met
 #' @return type safe value
+#' @export
 safe.ifelse <- function(cond, yes, no) {
     class.y <- class(yes)
     X <- ifelse(cond, yes, no)
@@ -45,7 +46,7 @@ checkStructureColumn <- function(df, columnName) {
 #' @importFrom magrittr %>%
 #' @importFrom magrittr extract2
 checkBlockFormat <- function(df, idColumn = "PATIENT", dateColumn = "VISIT", dataColumn = "MEASURE") {
-    result <- NA
+    result <- NULL
     if (class(df %>% extract2(dateColumn)) == "Date") {
         if (checkStructureColumn(df, idColumn) & checkStructureColumn(df, dateColumn) & checkStructureColumn(df, dataColumn)) {
             names(df)[which(names(df) == idColumn)] <- "PATIENT"
@@ -69,7 +70,7 @@ checkBlockFormat <- function(df, idColumn = "PATIENT", dateColumn = "VISIT", dat
 #' @importFrom magrittr %>%
 #' @importFrom magrittr extract2
 checkBaselineFormat <- function(df, idColumn = "PATIENT", dateColumn = "VISIT") {
-    result <- NA
+    result <- NULL
     if (class(df %>% extract2(dateColumn)) == "Date") {
         if (checkStructureColumn(df, idColumn) & checkStructureColumn(df, dateColumn)) {
             names(df)[which(names(df) == idColumn)] <- "PATIENT"
@@ -88,26 +89,26 @@ checkBaselineFormat <- function(df, idColumn = "PATIENT", dateColumn = "VISIT") 
 #' @param dayDiff time around baseline (default: 90 days, will look three months before and after baseline)
 #' @inheritParams checkBlockFormat
 #' @return data frame with baseline measure or NA if no measurement was close to baseline
-#' @keywords internal
+#' @export
 #' @importFrom magrittr %>%
 #' @importFrom magrittr extract2
-findClosestToBaseline <- function(serialDf, baselineDates, blDayDiff = 90, ...) {
-    serialDf <- checkBlockFormat(serialDf, ...)
-    if (is.na(serialDf)) {
+findClosestToBaseline <- function(serialDf, baselineDates, blDayDiff = 90, idColumn = 'PATIENT', dateColumn = 'VISIT', dataColumn = 'MEASURE') {
+    serialDf <- checkBlockFormat(serialDf, idColumn = idColumn, dateColumn = dateColumn, dataColumn = dataColumn)
+    if (is.null(serialDf)) {
         stop("incorrect format of serial input data")
     }
-    baselineDates <- checkBaselineFormat(baselineDates, ...)
-    if (is.na(baselineDates)) {
+    baselineDates <- checkBaselineFormat(baselineDates, idColumn = idColumn, dateColumn = dateColumn)
+    if (is.null(baselineDates)) {
         stop("incorrect format of baseline input data")
     }
     baselineDates <- baselineDates %>% mutate(BL_MEASURE = NA, BL_MEASURE_DATE = NA)
     for (i in 1:nrow(baselineDates)) {
-        df <- serialDf[which(serialDf$PATIENT == baselineDates[i, "PATIENT"]), ]
+        df <- serialDf[which(serialDf$PATIENT == baselineDates[[i, "PATIENT"]]), ]
         if (nrow(df) > 0) {
-            index <- which.min(abs(as.numeric(as.Date(baselineDates[i, "VISIT"]) - as.Date(df$VISIT))))
-            if (abs(as.numeric(as.Date(baselineDates[i, "VISIT"]) - as.Date(df[[index, "VISIT"]]))) <= blDayDiff) {
-                baselineDates[i, "BL_MEASURE"] <- df[index, "MEASURE"]
-                baselineDates[i, "BL_MEASURE_DATE"] <- df[index, "VISIT"]
+            index <- which.min(abs(as.numeric(baselineDates[[i, "VISIT"]] - df$VISIT)))
+            if (abs(as.numeric(baselineDates[[i, "VISIT"]] - df[[index, "VISIT"]])) <= blDayDiff) {
+                baselineDates[i, "MEASURE"] <- df[[index, "MEASURE"]]
+                baselineDates[i, "BL_MEASURE_DATE"] <- format(df[[index, "VISIT"]],'%Y-%m-%d')
             }
         }
     }
@@ -125,18 +126,18 @@ findClosestToBaseline <- function(serialDf, baselineDates, blDayDiff = 90, ...) 
 #' @return data frame with (linearly) interpolated values
 #' @keywords internal
 calculateInterpolation <- function(toInterpolate, dataDF, dateDF, timeframe, baselineDate) {
-    myStart <- as.Date(dateDF[[toInterpolate[1] - 1]])
-    myEnd <- as.Date(dateDF[[toInterpolate[length(toInterpolate)] + 1]])
-    startMeasure <- dataDF[toInterpolate[1] - 1]
-    endMeasure <- dataDF[toInterpolate[length(toInterpolate)] + 1]
-    dateDiff <- myEnd - myStart
-    myDailyFactor <- (endMeasure - startMeasure)/as.numeric(dateDiff)
-    for (i in 1:length(toInterpolate)) {
-        midDate <- baselineDate + ((toInterpolate[i] - 2) * timeframe) + (0.5 * timeframe)
-        myFactor <- as.numeric(midDate - myStart) * myDailyFactor
-        dataDF[toInterpolate[i]] <- startMeasure + myFactor
-    }
-    dataDF
+  myStart <- as.Date(dateDF[[toInterpolate[1] - 1]])
+  myEnd <- as.Date(dateDF[[toInterpolate[length(toInterpolate)] + 1]])
+  startMeasure <- dataDF[toInterpolate[1] - 1]
+  endMeasure <- dataDF[toInterpolate[length(toInterpolate)] + 1]
+  dateDiff <- myEnd - myStart
+  myDailyFactor <- (endMeasure - startMeasure)/as.numeric(dateDiff)
+  for (i in 1:length(toInterpolate)) {
+    midDate <- baselineDate + ((toInterpolate[i] - 2) * timeframe) + (0.5 * timeframe)
+    myFactor <- as.numeric(midDate - myStart) * myDailyFactor
+    dataDF[toInterpolate[i]] <- startMeasure + myFactor
+  }
+  dataDF
 }
 
 #' calculate the linear interpolation for each consecutive set of empty blocks

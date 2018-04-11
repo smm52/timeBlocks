@@ -11,6 +11,7 @@
 #' @param doRemove removes PATIENT entries that start with !, DSP, TH or CC
 #' @param guessRow when no description file is given, how many rows should be used to guess the column type (default: 1000)
 #' @return The dataset as a data frame.
+#' @export
 #' @importFrom magrittr %>%
 #' @importFrom readr read_tsv
 #' @importFrom readr problems

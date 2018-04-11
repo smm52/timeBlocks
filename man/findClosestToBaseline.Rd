@@ -4,9 +4,16 @@
 \alias{findClosestToBaseline}
 \title{Finds the measurement date that is closest to baseline}
 \usage{
-findClosestToBaseline(serialDf, baselineDates, blDayDiff = 90, ...)
+findClosestToBaseline(serialDf, baselineDates, blDayDiff = 90,
+  idColumn = "PATIENT", dateColumn = "VISIT", dataColumn = "MEASURE")
 }
 \arguments{
+\item{idColumn}{name of ID column: default is PATIENT}
+
+\item{dateColumn}{name of date column: default is VISIT. This column has to be of class Date}
+
+\item{dataColumn}{name of the data column: default is MEASURE}
+
 \item{df}{the data frame to check}
 
 \item{dayDiff}{time around baseline (default: 90 days, will look three months before and after baseline)}
@@ -17,4 +24,3 @@ data frame with baseline measure or NA if no measurement was close to baseline
 \description{
 Finds the measurement date that is closest to baseline in the given time period around baseline.
 }
-\keyword{internal}

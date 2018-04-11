@@ -11,7 +11,9 @@ Imports:
   dplyr (>= 0.7.4),
   magrittr (>= 1.5),
   plyr (>= 1.8.4),
-  readr (>= 1.1.1)
+  readr (>= 1.1.1),
+  tidyr (>= 0.8.0),
+  lubridate (>= 1.7.2)
 License: CC-BY-SA-4.0
 Encoding: UTF-8
 LazyData: true

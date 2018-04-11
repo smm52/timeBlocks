@@ -14,17 +14,24 @@
 #' @param dataColumn name of the data column: default is MEASURE
 #' @param dataName set a user specified name for the data column in the output: default is measure
 #' @return time block data and dates in wide format
+#' @export
 #' @importFrom magrittr %>%
 #' @importFrom dplyr filter
 #' @importFrom dplyr mutate
 #' @importFrom dplyr select
-createTimeBlocks <- function(serialDf, baselineInfo, studyStartDate, studyEndDate, blockDays = 365.25, interpolate = TRUE, 
-    measureIsFactor = FALSE, blockSummaryStats = "median", blDayDiff = 90, idColumn = "PATIENT", dateColumn = "VISIT", dataColumn = "MEASURE", 
-    dataName = "measure") {
-    # check non-default arguments
-    if (is.na(serialDf) | is.na(baselineInfo) | is.na(studyStartDate) | is.na(studyEndDate)) {
-        stop("Non-default arguments are missing")
-    }
+#' @importFrom tidyr separate
+#' @importFrom tidyr gather
+#' @importFrom tidyr spread
+#' @importFrom dplyr mutate_at
+#' @importFrom dplyr starts_with
+#' @importFrom plyr ldply
+#' @importFrom plyr arrange
+#' @importFrom lubridate ymd
+createTimeBlocks <- function(serialDf, baselineInfo, studyStartDate, studyEndDate,
+                             blockDays = 365.25, interpolate = TRUE, measureIsFactor = FALSE,
+                             blockSummaryStats = "median", blDayDiff = 90,
+                             idColumn = "PATIENT", dateColumn = "VISIT", dataColumn = "MEASURE",
+                             dataName = "measure", longFormat = TRUE) {
     # did we implement the blockSummaryStats already
     if (!(blockSummaryStats %in% c("median", "min", "max", "IQR"))) {
         stop(paste0(blockSummaryStats, ": has not been implemented as a block summary statistics yet"))
@@ -52,32 +59,36 @@ createTimeBlocks <- function(serialDf, baselineInfo, studyStartDate, studyEndDat
     if (blockSummaryStats == "iqr" & interpolate == TRUE) {
         stop("Interpolationfor IQR not implemented")
     }
-    
+
     # restrict serial data to baseline patients
     serialDf <- serialDf %>% filter(PATIENT %in% baselineInfo$PATIENT)
     # check whether there are patients
     if (nrow(serialDf) == 0) {
         stop("Serial data does not contain any of the baseline patients.")
     }
-    
+
     # check format and find baseline measure and date in serial data
-    baselineInfo <- findClosestToBaseline <- function(serialDf, baselineDates = baselineInfo, blDayDiff = blDayDiff, idColumn = "PATIENT", 
-        dateColumn = "VISIT", dataColumn = "MEASURE") 
+    baselineInfo <- findClosestToBaseline(serialDf, baselineDates = baselineInfo, blDayDiff = blDayDiff, idColumn = idColumn,
+        dateColumn = dateColumn, dataColumn = dataColumn)
     # restrict serial data to study period
     serialDf <- serialDf %>% filter(VISIT <= studyEndDate & VISIT >= studyStartDate)
     # check whether there are patients
     if (nrow(serialDf) == 0) {
         stop("Serial data does not contain any data for the study period.")
     }
-    
-    
+
+
     allRecords <- list()
     maxContainers <- 0
-    
+
     # go through all baseline patients
     for (i in 1:nrow(baselineInfo)) {
         myPatient <- baselineInfo[i, ]
+
+        #date of the baseline study visit (might not have a measure)
         myBaselineDate <- myPatient$VISIT
+
+        #initialise lastMeasure with baseline measure
         lastMeasure <- myPatient$MEASURE
         if (is.na(lastMeasure)) {
             minContainerStart <- NA
@@ -85,85 +96,85 @@ createTimeBlocks <- function(serialDf, baselineInfo, studyStartDate, studyEndDat
             minContainerStart <- myBaselineDate
         }
         # we cannot calculate an IQR from one measurement
-        if (minMax == "iqr") {
+        if (blockSummaryStats == "iqr") {
             lastMeasure <- NA
         }
-        
+
         # initial lists and set baseline (measure0) date and value
         longitudonalRecord <- list()
         longitudonalRecordNames <- list()
         longitudonalRecordDates <- list()
         longitudonalRecord[1] <- lastMeasure
-        longitudonalRecordNames[1] <- paste0(dataName, 0)
+        longitudonalRecordNames[1] <- paste0(paste0(dataName,'_'), 0)
         longitudonalRecordDates[1] <- as.character(myBaselineDate)
-        lengthFollowUp <- 0
-        
+        timeWithRecords <- 0
+
         # look at a specific patient
         patientSerialDf <- serialDf %>% filter(PATIENT == myPatient$PATIENT)
-        
+
         # do we have serial data for this patient?
         if (nrow(patientSerialDf) > 0) {
-            
+
             # last known measurement
-            lastFollowUpTime <- as.Date(patientSerialDf[which.max(patientSerialDf$VISIT), "VISIT"])
-            
+            lastFollowUpTime <- patientSerialDf[[which.max(patientSerialDf$VISIT), "VISIT"]]
+
             # how many containers do we need for this individual
             patientContainers <- ceiling(as.numeric(lastFollowUpTime - myBaselineDate)/blockDays)
-            
+
             # record the current maximum of containers needed
             maxContainers <- max(maxContainers, patientContainers)
-            
+
             # for each patient the containers start at baseline
             containerStart <- myBaselineDate
             finalRecord <- NA
-            
+
             # fill each container if there are any
             if (patientContainers > 0) {
                 for (j in 1:patientContainers) {
                   thisMeasure <- lastMeasure
-                  containerEnd <- containerStart + timeframe
+                  containerEnd <- containerStart + blockDays
                   thisBlock <- patientSerialDf %>% filter(VISIT > containerStart & VISIT <= containerEnd)
-                  
+
                   # is there any data in the block
                   if (nrow(thisBlock) > 0) {
                     minContainerStart <- min(minContainerStart, containerStart, na.rm = TRUE)
-                    
+
                     # calculate the block summary stats
-                    if (minMax == "max") {
+                    if (blockSummaryStats == "max") {
                       indexMax <- which.max(thisBlock$MEASURE)
                       thisMeasure <- thisBlock[indexMax, "MEASURE"]
-                    } else if (minMax == "min") {
+                    } else if (blockSummaryStats == "min") {
                       indexMax <- which.min(thisBlock$MEASURE)
                       thisMeasure <- thisBlock[indexMax, "MEASURE"]
-                    } else if (minMax == "median") {
+                    } else if (blockSummaryStats == "median") {
                       thisMeasure <- median(thisBlock$MEASURE, na.rm = TRUE)
-                    } else if (minMax == "iqr") {
+                    } else if (blockSummaryStats == "iqr") {
                       thisMeasure <- IQR(thisBlock$MEASURE, na.rm = TRUE)
                     }
                     longitudonalRecord[j + 1] <- thisMeasure
                     finalRecord <- thisMeasure
-                    
+
                     # calculate the block date
-                    if (minMax %in% c("min", "max")) {
+                    if (blockSummaryStats %in% c("min", "max")) {
                       thisBlock <- thisBlock %>% filter(MEASURE == thisMeasure)
                       indexMin <- which.min(thisBlock$VISIT)
-                    } else if (minMax %in% c("median", "iqr")) {
+                    } else if (blockSummaryStats %in% c("median", "iqr")) {
                       # date with measure closest to stats
                       measureCloseTo <- median(thisBlock$MEASURE, na.rm = TRUE)
-                      indexMin <- which(abs(thisBlock$MEASURE - measureCloseTo) == min(abs(thisBlock$MEASURE - measureCloseTo), 
+                      indexMin <- which(abs(thisBlock$MEASURE - measureCloseTo) == min(abs(thisBlock$MEASURE - measureCloseTo),
                         na.rm = TRUE))
                       indexMin <- indexMin[[1]]
                     }
-                    longitudonalRecordDates[j + 1] <- as.character(thisBlock[indexMin, "VISIT"])
+                    longitudonalRecordDates[j + 1] <- format(thisBlock[[indexMin, "VISIT"]],'%Y-%m-%d')
                   } else {
                     # no data in the block
                     if (is.na(minContainerStart)) {
                       longitudonalRecord[j + 1] <- NA
                     } else {
-                      if (interpolate == TRUE & measureIsFactor == FALSE & minMax != "iqr") {
+                      if (interpolate == TRUE & measureIsFactor == FALSE & blockSummaryStats != "iqr") {
                         longitudonalRecord[j + 1] <- -1
                       } else {
-                        if (minMax == "iqr" | interpolate == FALSE) {
+                        if (blockSummaryStats == "iqr" | interpolate == FALSE) {
                           longitudonalRecord[j + 1] <- NA
                         } else {
                           longitudonalRecord[j + 1] <- lastMeasure
@@ -172,65 +183,84 @@ createTimeBlocks <- function(serialDf, baselineInfo, studyStartDate, studyEndDat
                     }
                     longitudonalRecordDates[j + 1] <- NA
                   }
-                  
+
                   # prepare variables for next block
-                  longitudonalRecordNames[j + 1] <- paste0(columnName, j)
+                  longitudonalRecordNames[j + 1] <- paste0(paste0(dataName,'_'), j)
                   lastMeasure <- thisMeasure
                   containerStart <- containerEnd
                 }
-                lengthFollowUp <- as.numeric(lastFollowUpTime - minContainerStart)/365.25
+                timeWithRecords <- as.numeric(lastFollowUpTime - minContainerStart)/365.25
             }
         }
-        
+
         dbRecord <- longitudonalRecord %>% unlist() %>% t() %>% as.data.frame()
         names(dbRecord) <- longitudonalRecordNames %>% unlist()
         dateRecord <- longitudonalRecordDates %>% unlist() %>% t() %>% as.data.frame()
         names(dateRecord) <- longitudonalRecordNames %>% lapply(function(x) {
-            paste0("date_", x)
+            paste0("date.", x)
         }) %>% unlist()
-        
+
         # check whether we have to a linear interpolation
         if (interpolate == TRUE & measureIsFactor == FALSE & -1 %in% dbRecord[1, ]) {
             dbRecord <- doInterpolate(dbRecord, dateRecord, blockDays, myBaselineDate)
         }
-        if (lengthFollowUp > 0) {
-            if (minMax == "min") {
+        if (timeWithRecords > 0) {
+            if (blockSummaryStats == "min") {
                 dbRecord <- dbRecord %>% mutate(lowestRecord = min(unlist(dbRecord[1, ]), na.rm = TRUE))
-            } else if (minMax == "max") {
+            } else if (blockSummaryStats == "max") {
                 dbRecord <- dbRecord %>% mutate(highestRecord = max(unlist(dbRecord[1, ]), na.rm = TRUE))
-            } else if (minMax == "median") {
+            } else if (blockSummaryStats == "median") {
                 dbRecord <- dbRecord %>% mutate(medianRecord = median(unlist(dbRecord[1, ]), na.rm = TRUE))
-            } else if (minMax == "iqr") {
+            } else if (blockSummaryStats == "iqr") {
                 dbRecord <- dbRecord %>% mutate(iqrRecord = median(unlist(dbRecord[1, ]), na.rm = TRUE))
             }
         }
         dbRecord <- dbRecord %>% mutate(finalRecord = finalRecord)
         dbRecord <- cbind(dbRecord, dateRecord) %>% as.data.frame()
         dbRecord <- dbRecord %>% mutate(PATIENT = myPatient$PATIENT)
-        dbRecord <- dbRecord %>% mutate(followUpTime = round(lengthFollowUp, digits = 3))
+        dbRecord <- dbRecord %>% mutate(timeWithRecords = round(timeWithRecords, digits = 3))
         allRecords[[i]] <- dbRecord
     }
-    myLong <- allRecords %>% ldply()
-    if (maxContainers > 0) {
-        extremeValue <- c()
-        if (minMax == "min") {
-            extremeValue <- "lowestRecord"
-        } else if (minMax == "max") {
-            extremeValue <- "highestRecord"
-        } else if (minMax == "median") {
-            extremeValue <- "medianRecord"
-        } else if (minMax == "iqr") {
-            extremeValue <- "iqrRecord"
-        }
-        sortedHeadings <- c("PATIENT", "timeWithRecords", extremeValue[1], "finalRecord", c(0:maxContainers) %>% lapply(function(x, 
+    resultDf <- allRecords %>% ldply()
+
+    #create wide form
+    if(!longFormat){
+      if (maxContainers > 0) {
+          extremeValue <- c()
+          if (blockSummaryStats == "min") {
+              extremeValue <- "lowestRecord"
+          } else if (blockSummaryStats == "max") {
+              extremeValue <- "highestRecord"
+          } else if (blockSummaryStats == "median") {
+              extremeValue <- "medianRecord"
+         } else if (blockSummaryStats == "iqr") {
+              extremeValue <- "iqrRecord"
+          }
+          sortedHeadings <- c("PATIENT", "timeWithRecords", extremeValue[1], "finalRecord", c(0:maxContainers) %>% lapply(function(x,
             myName) {
-            paste0(myName, x)
-        }, columnName), c(0:maxContainers) %>% lapply(function(x, myName) {
-            paste0("date_", paste0(myName, x))
-        }, columnName)) %>% unlist()
-    } else {
-        sortedHeadings <- c("PATIENT", "timeWithRecords", paste0("date", paste0("_", paste0(columnName, 0))))
+            paste0(paste0(myName,'_'), x)
+          }, dataName), c(0:maxContainers) %>% lapply(function(x, myName) {
+            paste0("date.", paste0(paste0(myName,'_'), x))
+          }, dataName)) %>% unlist()
+      } else {
+          sortedHeadings <- c("PATIENT", "timeWithRecords", paste0("date", paste0(".", paste0(dataName, 0))))
+      }
+      resultDf <- resultDf %>% select(sortedHeadings)
+    } else { #create long form
+      resultDf1 <- resultDf %>% select(c(starts_with(dataName),starts_with(idColumn)))
+      resultDf1 <- gather(resultDf1, key, value, -PATIENT) %>%
+        separate(key, sep = '_', into = c(dataName,'block')) %>%
+        spread(dataName,value)
+      resultDf2 <- resultDf %>% select(c(starts_with('date'),starts_with(idColumn))) %>%
+        mutate_at(vars(starts_with('date')), as.character)
+      resultDf2 <- gather(resultDf2, key, value, -PATIENT) %>%
+        separate(key, sep = '_', into = c('date','block')) %>%
+        spread(date,value) %>%
+        mutate(date.bmi=ymd(date.bmi))
+      resultDf <- merge(resultDf1, resultDf2, by = c('PATIENT','block'), all = TRUE)
+      resultDf$block <- as.integer(resultDf$block)
+      resultDf <- resultDf %>% arrange(PATIENT,block)
     }
-    myLong <- myLong %>% select(sortedHeadings)
-    myLong
+    resultDf
 }
+
