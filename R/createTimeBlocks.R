@@ -1,4 +1,4 @@
-#' Calculates the time block data  in wide format
+#' Calculates the time block data
 #'
 #' @param serialDf the data frame with the serial data
 #' @param baselineInfo dataframe with ID and baseline date
@@ -13,6 +13,7 @@
 #' @param dateColumn name of date column: default is VISIT. This column has to be of class Date
 #' @param dataColumn name of the data column: default is MEASURE
 #' @param dataName set a user specified name for the data column in the output: default is measure
+#' @param longFormat flag to indicate whether results should be in long or wide format. Wide has some additional columns (default: TRUE)
 #' @return time block data and dates in wide format
 #' @export
 #' @importFrom magrittr %>%
