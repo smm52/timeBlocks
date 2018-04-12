@@ -219,7 +219,6 @@ createTimeBlocks <- function(serialDf, baselineInfo, studyStartDate, studyEndDat
         dbRecord <- dbRecord %>% mutate(finalRecord = finalRecord)
         dbRecord <- cbind(dbRecord, dateRecord) %>% as.data.frame()
         dbRecord <- dbRecord %>% mutate(PATIENT = myPatient$PATIENT)
-        dbRecord <- dbRecord %>% mutate(timeWithRecords = round(timeWithRecords, digits = 3))
         allRecords[[i]] <- dbRecord
     }
     resultDf <- allRecords %>% ldply()
