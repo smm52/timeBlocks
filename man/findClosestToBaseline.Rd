@@ -24,3 +24,12 @@ data frame with baseline measure or NA if no measurement was close to baseline
 \description{
 Finds the measurement date that is closest to baseline in the given time period around baseline.
 }
+\examples{
+\dontrun{
+baselinePatients <- read_tsv('../data/ourBaselinePatients.txt', guess_max = 3582) \%>\%
+    select(PATIENT, VISIT = VISIT_TL)
+## make sure the serial data contains the baselines as well (e.g. tutlom or central, local labs)
+bmi <- read_tsv('../data/serial_bmi.txt')
+baselinePatients <- findClosestToBaseline(bmi, baselinePatients, blDayDiff = 90)
+}
+}
