@@ -28,8 +28,7 @@ Finds the measurement date that is closest to baseline in the given time period 
 \dontrun{
 baselinePatients <- read_tsv('../data/ourBaselinePatients.txt', guess_max = 3582) \%>\%
     select(PATIENT, VISIT = VISIT_TL)
-## make sure the serial data contains the baselines as well (e.g. tutlom or central, local labs)
-bmi <- read_tsv('../data/serial_bmi.txt')
+bmi <- read_tsv('../data/serial_bmi.txt') # contains serial and baseline data
 baselinePatients <- findClosestToBaseline(bmi, baselinePatients, blDayDiff = 90)
 }
 }

@@ -133,8 +133,7 @@ checkPrescriptionFormat <- function(df, idColumn = "PATIENT", dateColumn = "VISI
 #' \dontrun{
 #' baselinePatients <- read_tsv('../data/ourBaselinePatients.txt', guess_max = 3582) %>%
 #'     select(PATIENT, VISIT = VISIT_TL)
-#' ## make sure the serial data contains the baselines as well (e.g. tutlom or central, local labs)
-#' bmi <- read_tsv('../data/serial_bmi.txt')
+#' bmi <- read_tsv('../data/serial_bmi.txt') # contains serial and baseline data
 #' baselinePatients <- findClosestToBaseline(bmi, baselinePatients, blDayDiff = 90)
 #' }
 findClosestToBaseline <- function(serialDf, baselineDates, blDayDiff = 90, idColumn = "PATIENT", dateColumn = "VISIT", dataColumn = "MEASURE") {
