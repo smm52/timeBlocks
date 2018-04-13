@@ -7,6 +7,13 @@ Installation
 ------------
 
 ```r
-#Install package from source
-install.packages('timeBlocks_0.1.0.tar.gz', repos = NULL, type = 'source')
+#Install package from github
+library(devtools)
+install_github('smm52/timeBlocks')
+library(timeBlocks)
+```
+
+If the package was still loaded you might have to call the following line before loading the library
+```r
+detach("package:timeBlocks", unload=TRUE)
 ```
