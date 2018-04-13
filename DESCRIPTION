@@ -1,6 +1,6 @@
 Package: timeBlocks
 Type: Package
-Title: Converts Serial Measurement Data Into Longitudinal trajectory of equally sized time blocks
+Title: Converts Serial Measurement Data into Longitudinal Trajectory of Equally-sized Time Blocks
 Version: 0.1.0
 Authors@R: person("Stefan", "Mutter", email = "stefan.mutter@gmail.com",
                   role = c("aut", "cre"))
