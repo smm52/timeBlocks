@@ -8,12 +8,14 @@
 #' @param no what happens if no condition is not met
 #' @return type safe value
 #' @export
-#' @examples{
+#' @examples
 #' myDate1 <- NA
-#' myDate2 <- s.Date('2000-01-31', '%Y-%m-%d')
+#' myDate2 <- as.Date('2000-01-31', '%Y-%m-%d')
 #' safe.ifelse(is.na(myDate1),myDate2,myDate1)
 #' class(safe.ifelse(is.na(myDate1),myDate2,myDate1))
-#' }
+#'
+#' ifelse(is.na(myDate1),myDate2,myDate1)
+#' class(ifelse(is.na(myDate1),myDate2,myDate1))
 safe.ifelse <- function(cond, yes, no) {
   class.y <- class(yes)
   X <- ifelse(cond, yes, no)
@@ -127,6 +129,14 @@ checkPrescriptionFormat <- function(df, idColumn = "PATIENT", dateColumn = "VISI
 #' @export
 #' @importFrom magrittr %>%
 #' @importFrom magrittr extract2
+#' #' @examples
+#' \dontrun{
+#' baselinePatients <- read_tsv('../data/ourBaselinePatients.txt', guess_max = 3582) %>%
+#'     select(PATIENT, VISIT = VISIT_TL)
+#' #make sure the serial data contains the baselines as well (e.g. tutlom or central, local labs)
+#' bmi <- read_tsv('../data/serial_bmi.txt')
+#' baselinePatients <- findClosestToBaseline(bmi, baselinePatients, blDayDiff = 90)
+#' }
 findClosestToBaseline <- function(serialDf, baselineDates, blDayDiff = 90, idColumn = "PATIENT", dateColumn = "VISIT", dataColumn = "MEASURE") {
   serialDf <- checkBlockFormat(serialDf, idColumn = idColumn, dateColumn = dateColumn, dataColumn = dataColumn)
   if (is.null(serialDf)) {
