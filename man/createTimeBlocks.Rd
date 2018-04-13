@@ -2,7 +2,7 @@
 % Please edit documentation in R/createTimeBlocks.R
 \name{createTimeBlocks}
 \alias{createTimeBlocks}
-\title{Calculates the time block data  in wide format}
+\title{Calculates the time block data}
 \usage{
 createTimeBlocks(serialDf, baselineInfo, studyStartDate, studyEndDate,
   blockDays = 365.25, interpolate = TRUE, measureIsFactor = FALSE,
@@ -36,10 +36,12 @@ createTimeBlocks(serialDf, baselineInfo, studyStartDate, studyEndDate,
 \item{dataColumn}{name of the data column: default is MEASURE}
 
 \item{dataName}{set a user specified name for the data column in the output: default is measure}
+
+\item{longFormat}{flag to indicate whether results should be in long or wide format. Wide has some additional columns (default: TRUE)}
 }
 \value{
 time block data and dates in wide format
 }
 \description{
-Calculates the time block data  in wide format
+Calculates the time block data
 }

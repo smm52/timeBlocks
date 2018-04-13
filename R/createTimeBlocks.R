@@ -20,14 +20,7 @@
 #' @importFrom dplyr filter
 #' @importFrom dplyr mutate
 #' @importFrom dplyr select
-#' @importFrom tidyr separate
-#' @importFrom tidyr gather
-#' @importFrom tidyr spread
-#' @importFrom dplyr mutate_at
-#' @importFrom dplyr starts_with
 #' @importFrom plyr ldply
-#' @importFrom plyr arrange
-#' @importFrom lubridate ymd
 createTimeBlocks <- function(serialDf, baselineInfo, studyStartDate, studyEndDate,
                              blockDays = 365.25, interpolate = TRUE, measureIsFactor = FALSE,
                              blockSummaryStats = "median", blDayDiff = 90,
@@ -247,19 +240,7 @@ createTimeBlocks <- function(serialDf, baselineInfo, studyStartDate, studyEndDat
       }
       resultDf <- resultDf %>% select(sortedHeadings)
     } else { #create long form
-      resultDf1 <- resultDf %>% select(c(starts_with(dataName),starts_with(idColumn)))
-      resultDf1 <- gather(resultDf1, key, value, -PATIENT) %>%
-        separate(key, sep = '_', into = c(dataName,'block')) %>%
-        spread(dataName,value)
-      resultDf2 <- resultDf %>% select(c(starts_with('date'),starts_with(idColumn))) %>%
-        mutate_at(vars(starts_with('date')), as.character)
-      resultDf2 <- gather(resultDf2, key, value, -PATIENT) %>%
-        separate(key, sep = '_', into = c('date','block')) %>%
-        spread(date,value) %>%
-        mutate(date.bmi=ymd(date.bmi))
-      resultDf <- merge(resultDf1, resultDf2, by = c('PATIENT','block'), all = TRUE)
-      resultDf$block <- as.integer(resultDf$block)
-      resultDf <- resultDf %>% arrange(PATIENT,block)
+      resultDf <- makeLong(resultDf, dataName = dataName, idColumn = idColumn)
     }
     resultDf
 }
