@@ -45,3 +45,14 @@ time block data and dates in wide format
 \description{
 Calculates the time block data
 }
+\examples{
+\dontrun{
+baselinePatients <- read_tsv('../data/ourBaselinePatients.txt', guess_max = 3582) \%>\%
+    select(PATIENT, VISIT = VISIT_TL)
+bmi <- read_tsv('../data/serial_bmi.txt')
+resBmiWide <- createTimeBlocks(bmi, baselinePatients, studyStartDate = as.Date('1995-01-01', '\%Y-\%m-\%d'),
+        studyEndDate = as.Date('2015-12-31', '\%Y-\%m-\%d'), blDayDiff = 90, dataName = "bmi", longFormat = FALSE)
+resBmiTRUE <- createTimeBlocks(bmi, baselinePatients, studyStartDate = as.Date('1995-01-01', '\%Y-\%m-\%d'),
+        studyEndDate = as.Date('2015-12-31', '\%Y-\%m-\%d'), blDayDiff = 90, dataName = "bmi", longFormat = TRUE)
+}
+}

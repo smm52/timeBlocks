@@ -20,3 +20,11 @@ type safe value
 Type safe if.else implementation that make sure that the output has the same class as the yes condition part.
 This is important for dates for examples.
 }
+\examples{
+{
+myDate1 <- NA
+myDate2 <- s.Date('2000-01-31', '\%Y-\%m-\%d')
+safe.ifelse(is.na(myDate1),myDate2,myDate1)
+class(safe.ifelse(is.na(myDate1),myDate2,myDate1))
+}
+}

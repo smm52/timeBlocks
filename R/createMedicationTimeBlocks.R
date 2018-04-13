@@ -21,6 +21,27 @@
 #' @importFrom dplyr group_by
 #' @importFrom dplyr summarise_at
 #' @importFrom plyr ldply
+#' @examples
+#' \dontrun{
+#' baselinePatients <- read_tsv('../data/ourBaselinePatients.txt', guess_max = 3582) %>%
+#'     select(PATIENT, VISIT = VISIT_TL)
+#' allFimea <- read_tsv('../data/all_fimea_kela.txt')
+#' allFimea <- allFimea %>% mutate(VISIT = ymd(allFimea$ostopv))
+#' allFimea <- allFimea %>% mutate(PATIENT = fd)
+#' allFimea <- allFimea %>% filter(!is.na(all_ddd)) #check these as they should not exists
+#' medResLong <- createMedicationTimeBlocks(allFimea, baselinePatients,
+#'    studyStartDate = as.Date('1995-01-01', '%Y-%m-%d'),
+#'    studyEndDate = as.Date('2015-12-31', '%Y-%m-%d'),
+#'    atcCode = 'C09', blockDays = 365.25, useDoses = FALSE, idColumn = "PATIENT", dateColumn = "VISIT",
+#'    atcColumn = "ATC_FIMEA", dddColumn = 'all_ddd', dataName = "anyRAAS", longFormat = TRUE,
+#'    noUseAtBaseline = FALSE)
+#' medResWide <- createMedicationTimeBlocks(allFimea, baselinePatients,
+#'    studyStartDate = as.Date('1995-01-01', '%Y-%m-%d'),
+#'    studyEndDate = as.Date('2015-12-31', '%Y-%m-%d'),
+#'    atcCode = 'C09', blockDays = 365.25, useDoses = FALSE, idColumn = "PATIENT", dateColumn = "VISIT",
+#'    atcColumn = "ATC_FIMEA", dddColumn = 'all_ddd', dataName = "anyRAAS", longFormat = FALSE,
+#'    noUseAtBaseline = FALSE)
+#' }
 createMedicationTimeBlocks <- function(serialDf, baselineInfo, studyStartDate, studyEndDate, atcCode = "C09", blockDays = 365.25, useDoses = FALSE,
                                        idColumn = "PATIENT", dateColumn = "VISIT", atcColumn = "ATC", dddColumn = "cDDD", dataName = "prescription", longFormat = TRUE, noUseAtBaseline = FALSE) {
   # check data frames
@@ -222,3 +243,4 @@ createMedicationTimeBlocks <- function(serialDf, baselineInfo, studyStartDate, s
   resultDf
 
 }
+

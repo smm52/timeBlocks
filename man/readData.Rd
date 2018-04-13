@@ -26,3 +26,8 @@ The description file is a direct downlad from the BCOS table descritpions
 
 If only the fileName is given, the function behaves like read_tsv from readr
 }
+\examples{
+\dontrun{
+tutlom <- readData('../data/original/tutlom_20170531.txt','../data/original/desc_tutlom20170531.txt', TRUE)
+}
+}

@@ -17,7 +17,10 @@
 #' @importFrom readr problems
 #' @importFrom dplyr select
 #' @importFrom dplyr filter
-
+#' @examples
+#' \dontrun{
+#' tutlom <- readData('../data/original/tutlom_20170531.txt','../data/original/desc_tutlom20170531.txt', TRUE)
+#' }
 readData <- function(fileName, descName = NA, doRemove = TRUE, guessRows = NA) {
   if (!is.na(descName)) {
     df <- read_tsv(fileName, n_max = 1)
