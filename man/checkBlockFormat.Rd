@@ -17,7 +17,7 @@ checkBlockFormat(df, idColumn = "PATIENT", dateColumn = "VISIT",
 \item{dataColumn}{name of the data column: default is MEASURE}
 }
 \value{
-NA if there are format problems, otherwise a data frame that has a PATIENT, VISIT and MEASURE column
+NULL if there are format problems, otherwise a data frame that has a PATIENT, VISIT and MEASURE column
 }
 \description{
 We need an ID, data and a date column. the date column has to be of class Date.

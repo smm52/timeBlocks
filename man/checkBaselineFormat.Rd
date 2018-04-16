@@ -14,7 +14,7 @@ checkBaselineFormat(df, idColumn = "PATIENT", dateColumn = "VISIT")
 \item{dateColumn}{name of date column: default is VISIT. This column has to be of class Date}
 }
 \value{
-NA if there are format problems, otherwise a data frame that has a PATIENT andVISIT column
+NULL if there are format problems, otherwise a data frame that has a PATIENT andVISIT column
 }
 \description{
 We need an ID and a date column. the date column has to be of class Date.

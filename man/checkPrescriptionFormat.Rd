@@ -19,7 +19,7 @@ checkPrescriptionFormat(df, idColumn = "PATIENT", dateColumn = "VISIT",
 \item{dddColumn}{name of the DDD column: default is DDD}
 }
 \value{
-NA if there are format problems, otherwise a data frame that has a PATIENT, VISIT, ATC and DDD column
+NULL if there are format problems, otherwise a data frame that has a PATIENT, VISIT, ATC and DDD column
 }
 \description{
 We need an ID, date column, ATC and DDD column. The date column has to be of class Date.

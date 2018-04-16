@@ -49,7 +49,7 @@ checkStructureColumn <- function(df, columnName) {
 #' @param idColumn name of ID column: default is PATIENT
 #' @param dateColumn name of date column: default is VISIT. This column has to be of class Date
 #' @param dataColumn name of the data column: default is MEASURE
-#' @return NA if there are format problems, otherwise a data frame that has a PATIENT, VISIT and MEASURE column
+#' @return NULL if there are format problems, otherwise a data frame that has a PATIENT, VISIT and MEASURE column
 #' @keywords internal
 #' @importFrom magrittr %>%
 #' @importFrom magrittr extract2
@@ -73,7 +73,7 @@ checkBlockFormat <- function(df, idColumn = "PATIENT", dateColumn = "VISIT", dat
 #' @param df the data frame to check
 #' @param idColumn name of ID column: default is PATIENT
 #' @param dateColumn name of date column: default is VISIT. This column has to be of class Date
-#' @return  NA if there are format problems, otherwise a data frame that has a PATIENT andVISIT column
+#' @return  NULL if there are format problems, otherwise a data frame that has a PATIENT andVISIT column
 #' @keywords internal
 #' @importFrom magrittr %>%
 #' @importFrom magrittr extract2
@@ -98,7 +98,7 @@ checkBaselineFormat <- function(df, idColumn = "PATIENT", dateColumn = "VISIT") 
 #' @param dateColumn name of date column: default is VISIT. This column has to be of class Date
 #' @param atcColumn name of the ATC column: default is ATC
 #' @param dddColumn name of the DDD column: default is DDD
-#' @return NA if there are format problems, otherwise a data frame that has a PATIENT, VISIT, ATC and DDD column
+#' @return NULL if there are format problems, otherwise a data frame that has a PATIENT, VISIT, ATC and DDD column
 #' @keywords internal
 #' @importFrom magrittr %>%
 #' @importFrom magrittr extract2

@@ -48,6 +48,10 @@ createMedicationTimeBlocks <- function(serialDf, baselineInfo, studyStartDate, s
   if (nrow(serialDf) == 0 | nrow(baselineInfo) == 0) {
     stop("Serial data or baseline data is empty")
   }
+  #currently an underscore is a special character
+  if(grepl('_',dataName)){
+    stop('The current implementation does not support underscores (_) in data names')
+  }
   # check study dates
   if (class(studyStartDate) != "Date" | class(studyEndDate) != "Date") {
     stop("Study start and end date have to be of class Date")

@@ -37,8 +37,12 @@ createTimeBlocks <- function(serialDf, baselineInfo, studyStartDate, studyEndDat
                              idColumn = "PATIENT", dateColumn = "VISIT", dataColumn = "MEASURE",
                              dataName = "measure", longFormat = TRUE) {
     # did we implement the blockSummaryStats already
-    if (!(blockSummaryStats %in% c("median", "min", "max", "IQR"))) {
+    if (!(blockSummaryStats %in% c("median", "min", "max", "IQR","mean","sd","cv","geom_CV","quartile_cd"))) {
         stop(paste0(blockSummaryStats, ": has not been implemented as a block summary statistics yet"))
+    }
+    #currently an underscore is a special character
+    if(grepl('_',dataName)){
+      stop('The current implementation does not support underscores (_) in data names')
     }
     # check data frames
     if (nrow(serialDf) == 0 | nrow(baselineInfo) == 0) {
@@ -60,8 +64,8 @@ createTimeBlocks <- function(serialDf, baselineInfo, studyStartDate, studyEndDat
         stop("The number days around the baseline visit to check for a measurement has to be positive and it has to be smaller than a block.")
     }
     # no interpolation with 'iqr' stats
-    if (blockSummaryStats == "iqr" & interpolate == TRUE) {
-        stop("Interpolationfor IQR not implemented")
+    if (blockSummaryStats == "IQR" & interpolate == TRUE) {
+        stop("Interpolation for IQR not implemented")
     }
 
     # restrict serial data to baseline patients
@@ -99,8 +103,8 @@ createTimeBlocks <- function(serialDf, baselineInfo, studyStartDate, studyEndDat
         } else {
             minContainerStart <- myBaselineDate
         }
-        # we cannot calculate an IQR from one measurement
-        if (blockSummaryStats == "iqr") {
+        # we cannot calculate a few statistics based on one measurement
+        if (blockSummaryStats %in% c("IQR","sd","cv","geom_CV","quartile_cd")) {
             lastMeasure <- NA
         }
 
@@ -154,6 +158,16 @@ createTimeBlocks <- function(serialDf, baselineInfo, studyStartDate, studyEndDat
                       thisMeasure <- median(thisBlock$MEASURE, na.rm = TRUE)
                     } else if (blockSummaryStats == "iqr") {
                       thisMeasure <- IQR(thisBlock$MEASURE, na.rm = TRUE)
+                    } else if (blockSummaryStats == "mean") {
+                      thisMeasure <- mean(thisBlock$MEASURE, na.rm = TRUE)
+                    } else if (blockSummaryStats == "sd") {
+                      thisMeasure <- sd(thisBlock$MEASURE, na.rm = TRUE)
+                    } else if (blockSummaryStats == "cv") {
+                      thisMeasure <- sd(thisBlock$MEASURE, na.rm = TRUE) / abs(mean(thisBlock$MEASURE, na.rm = TRUE))
+                    } else if (blockSummaryStats == "geom_cv") {
+                      thisMeasure <- sqrt(exp((sd(logb(thisBlock$MEASURE), na.rm = TRUE))^2) - 1)
+                    } else if (blockSummaryStats == "quartile_cd") {
+                      thisMeasure <- IQR(thisBlock$MEASURE, na.rm = TRUE)/(quantile(thisBlock$MEASURE, na.rm = TRUE)[[4]] + quantile(thisBlock$MEASURE, na.rm = TRUE)[[2]])
                     }
                     longitudonalRecord[j + 1] <- thisMeasure
                     finalRecord <- thisMeasure
@@ -162,7 +176,7 @@ createTimeBlocks <- function(serialDf, baselineInfo, studyStartDate, studyEndDat
                     if (blockSummaryStats %in% c("min", "max")) {
                       thisBlock <- thisBlock %>% filter(MEASURE == thisMeasure)
                       indexMin <- which.min(thisBlock$VISIT)
-                    } else if (blockSummaryStats %in% c("median", "iqr")) {
+                    } else {
                       # date with measure closest to stats
                       measureCloseTo <- median(thisBlock$MEASURE, na.rm = TRUE)
                       indexMin <- which(abs(thisBlock$MEASURE - measureCloseTo) == min(abs(thisBlock$MEASURE - measureCloseTo),
@@ -215,8 +229,10 @@ createTimeBlocks <- function(serialDf, baselineInfo, studyStartDate, studyEndDat
                 dbRecord <- dbRecord %>% mutate(highestRecord = max(unlist(dbRecord[1, ]), na.rm = TRUE))
             } else if (blockSummaryStats == "median") {
                 dbRecord <- dbRecord %>% mutate(medianRecord = median(unlist(dbRecord[1, ]), na.rm = TRUE))
-            } else if (blockSummaryStats == "iqr") {
+            } else if (blockSummaryStats %in%  c("IQR","sd","cv","geom_cv","quartile_cd")) {
                 dbRecord <- dbRecord %>% mutate(iqrRecord = median(unlist(dbRecord[1, ]), na.rm = TRUE))
+            } else if (blockSummaryStats == "mean") {
+              dbRecord <- dbRecord %>% mutate(meanRecord = mean(unlist(dbRecord[1, ]), na.rm = TRUE))
             }
         }
         dbRecord <- dbRecord %>% mutate(finalRecord = finalRecord)
@@ -236,9 +252,19 @@ createTimeBlocks <- function(serialDf, baselineInfo, studyStartDate, studyEndDat
               extremeValue <- "highestRecord"
           } else if (blockSummaryStats == "median") {
               extremeValue <- "medianRecord"
-         } else if (blockSummaryStats == "iqr") {
+         } else if (blockSummaryStats == "IQR") {
               extremeValue <- "iqrRecord"
-          }
+         } else if (blockSummaryStats == "mean") {
+              extremeValue <- "meanRecord"
+         } else if (blockSummaryStats == "cv") {
+              extremeValue <- "coeffVariationRecord"
+         } else if (blockSummaryStats == "sd") {
+              extremeValue <- "sdRecord"
+         } else if (blockSummaryStats == "geom_cv") {
+           extremeValue <- "geomCoeffVariationRecord"
+         } else if (blockSummaryStats == "quartile_cd") {
+           extremeValue <- "quartileCoeffDispersionRecord"
+         }
           sortedHeadings <- c("PATIENT", "timeWithRecords", extremeValue[1], "finalRecord", c(0:maxContainers) %>% lapply(function(x,
             myName) {
             paste0(paste0(myName,'_'), x)
