@@ -270,7 +270,7 @@ makeLong <- function(df, dataName, idColumn) {
   # check whether there are date columns
   if (ncol(df %>% select(starts_with("date"))) > 0) {
     df2 <- df %>% select(c(starts_with("date"), starts_with(idColumn))) %>% mutate_at(vars(starts_with("date")), as.character)
-    df2 <- gather(df2, key, value, -PATIENT) %>% separate(key, sep = "_", into = c("date", "block")) %>% spread(date, value) %>% mutate(date.bmi = ymd(date.bmi))
+    df2 <- gather(df2, key, value, -PATIENT) %>% separate(key, sep = "_", into = c("date", "block")) %>% spread(date, value) %>% mutate_at(vars(paste0('date.',dataName)), funs(ymd))
     df <- merge(df1, df2, by = c("PATIENT", "block"), all = TRUE)
   } else {
     df <- df1
