@@ -31,9 +31,9 @@ createMedicationTimeBlocks(serialDf, baselineInfo, studyStartDate, studyEndDate,
 
 \item{atcColumn}{name of the column with the ATC codes: default is ATC}
 
-\item{dataName}{set a user specified name for the data column in the output: default is prescription}
+\item{dddColumn}{name of the column with the dosage information: default is cDDD}
 
-\item{doseColumn}{name of the column with the dosage information: default is cDDD}
+\item{dataName}{set a user specified name for the data column in the output: default is prescription}
 }
 \value{
 time block data and dates in wide format

@@ -25,11 +25,11 @@ safe.ifelse <- function(cond, yes, no) {
 
 #' Checks whether a column is in a data frame and all its rows are not NA
 #'
-#' @param df the data frame to check
 #' @param columnName name of the column
+#' @param df the data frame to check
 #' @return TRUE if the  column passes the test
 #' @keywords internal
-checkStructureColumn <- function(df, columnName) {
+checkStructureColumn <- function(columnName,df) {
   myReturn <- FALSE
   if (!is.na(columnName) & is.character(columnName)) {
     if (any(names(df) == columnName)) {
@@ -56,7 +56,7 @@ checkStructureColumn <- function(df, columnName) {
 checkBlockFormat <- function(df, idColumn = "PATIENT", dateColumn = "VISIT", dataColumn = "MEASURE") {
   result <- NULL
   if (class(df %>% extract2(dateColumn)) == "Date") {
-    if (checkStructureColumn(df, idColumn) & checkStructureColumn(df, dateColumn) & checkStructureColumn(df, dataColumn)) {
+    if (checkStructureColumn(idColumn, df) & checkStructureColumn(dateColumn, df) & checkStructureColumn(dataColumn, df)) {
       names(df)[which(names(df) == idColumn)] <- "PATIENT"
       names(df)[which(names(df) == dateColumn)] <- "VISIT"
       names(df)[which(names(df) == dataColumn)] <- "MEASURE"
@@ -80,7 +80,7 @@ checkBlockFormat <- function(df, idColumn = "PATIENT", dateColumn = "VISIT", dat
 checkBaselineFormat <- function(df, idColumn = "PATIENT", dateColumn = "VISIT") {
   result <- NULL
   if (class(df %>% extract2(dateColumn)) == "Date") {
-    if (checkStructureColumn(df, idColumn) & checkStructureColumn(df, dateColumn)) {
+    if (checkStructureColumn(idColumn, df) & checkStructureColumn(dateColumn, df)) {
       names(df)[which(names(df) == idColumn)] <- "PATIENT"
       names(df)[which(names(df) == dateColumn)] <- "VISIT"
       result <- df
@@ -105,8 +105,7 @@ checkBaselineFormat <- function(df, idColumn = "PATIENT", dateColumn = "VISIT") 
 checkPrescriptionFormat <- function(df, idColumn = "PATIENT", dateColumn = "VISIT", atcColumn = "ATC", dddColumn = "cDDD") {
   result <- NULL
   if (class(df %>% extract2(dateColumn)) == "Date") {
-    if (checkStructureColumn(df, idColumn) & checkStructureColumn(df, dateColumn) & checkStructureColumn(df, atcColumn) & checkStructureColumn(df,
-                                                                                                                                               dddColumn)) {
+    if (checkStructureColumn(idColumn, df) & checkStructureColumn(dateColumn, df) & checkStructureColumn(atcColumn, df) & checkStructureColumn(dddColumn, df)) {
       names(df)[which(names(df) == idColumn)] <- "PATIENT"
       names(df)[which(names(df) == dateColumn)] <- "VISIT"
       names(df)[which(names(df) == atcColumn)] <- "ATC"
@@ -297,3 +296,46 @@ noUseAtMissingBaseline <- function(df, blockLength, dataName) {
   }
   df
 }
+
+#' Checks whether a column is in a data frame
+#'
+#' @param columnName name of the column
+#' @param df the data frame to check
+#' @return TRUE if the  column passes the test
+#' @keywords internal
+checkStructureColumnResponse <- function(columnName,df) {
+  myReturn <- FALSE
+  if (!is.na(columnName) & is.character(columnName)) {
+    if (any(names(df) == columnName)) {
+      myReturn <- TRUE
+    }
+  }
+  myReturn
+}
+
+#' Checks the format whether the format for the data set is a time block based
+#'
+#' We need an ID, data and a date column. the date column has to be of class Date.
+#'
+#' @param df the data frame to check
+#' @param idColumn name of ID column
+#' @param blockColumn name of time block column
+#' @param responseColumn name of the column containing the patient block value for a biomarker
+#' @return NULL if there are format problems, otherwise a data frame that has a PATIENT, VISIT and MEASURE column
+#' @keywords internal
+#' @importFrom magrittr %>%
+checkResponseFormat <- function(df, idColumn, blockColumn, responseColumns) {
+  result <- NULL
+  if (length(responseColumns) > 0) {
+    if (checkStructureColumn(idColumn, df) & checkStructureColumn(blockColumn, df)) {
+      if(all(responseColumns %>% lapply(checkStructureColumnResponse,df) %>% unlist())){
+        names(df)[which(names(df) == idColumn)] <- "PATIENT"
+        names(df)[which(names(df) == blockColumn)] <- "BLOCK"
+        result <- df
+      }
+    }
+  }
+  result
+}
+
+
