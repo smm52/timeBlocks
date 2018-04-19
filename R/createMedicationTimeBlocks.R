@@ -10,7 +10,7 @@
 #' @param idColumn name of ID column: default is PATIENT
 #' @param dateColumn name of date column: default is VISIT. This column has to be of class Date
 #' @param atcColumn name of the column with the ATC codes: default is ATC
-#' @param doseColumn name of the column with the dosage information: default is cDDD
+#' @param dddColumn name of the column with the dosage information: default is cDDD
 #' @param dataName set a user specified name for the data column in the output: default is prescription
 #' @return time block data and dates in wide format
 #' @export
