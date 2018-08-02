@@ -5,7 +5,7 @@
 \title{Calculates a score based on principle component analysis}
 \usage{
 calculateResponseScore(responseDf, idColumn = "PATIENT",
-  blockColumn = "block", responseColumns, method = "cor")
+  blockColumn = "block", sexColumn = NA, responseColumns)
 }
 \arguments{
 \item{responseDf}{the data frame that contains the time blocks and the biomarker data per time block}
@@ -14,7 +14,7 @@ calculateResponseScore(responseDf, idColumn = "PATIENT",
 
 \item{blockColumn}{name of time block column}
 
-\item{method}{string that indiciates how the PCA should be calculated. Values are cor for correlation matrix, cov for covariance matrix and impute to impute missing values via k-nearest neighbour and the use base R PCA (currently not implemented)}
+\item{sexColumn}{name of column that contains sex information (optional)}
 
 \item{responseColumn}{names of the columns containing the patient block value for a biomarker (e.g. vector of string names). The score will be based only on these columns.}
 }
@@ -28,7 +28,6 @@ The function calcuculates a score for biomarker data represented as time blocks.
 \dontrun{
 results <- read_tsv('../data/responseSpreadsheet.txt')
 
-resultsCov <- calculateResponseScore(results,responseColumns = c('sbp','dbp','aerAll','acrAll','egfr'), method = 'cov')
-resultsCor <- calculateResponseScore(results,responseColumns = c('sbp','dbp','aerAll','acrAll','egfr'), method = 'cor')
+resultsCor <- calculateResponseScore(results,responseColumns = c('sbp','dbp','aerAll','acrAll','egfr'), sexColumn = 'SEX')
 }
 }

@@ -4,7 +4,7 @@
 \alias{checkResponseFormat}
 \title{Checks the format whether the format for the data set is a time block based}
 \usage{
-checkResponseFormat(df, idColumn, blockColumn, responseColumns)
+checkResponseFormat(df, idColumn, blockColumn, sexColumn, responseColumns)
 }
 \arguments{
 \item{df}{the data frame to check}
@@ -13,12 +13,14 @@ checkResponseFormat(df, idColumn, blockColumn, responseColumns)
 
 \item{blockColumn}{name of time block column}
 
+\item{sexColumn}{name of the sex column (optional)}
+
 \item{responseColumn}{name of the column containing the patient block value for a biomarker}
 }
 \value{
-NULL if there are format problems, otherwise a data frame that has a PATIENT, VISIT and MEASURE column
+NULL if there are format problems
 }
 \description{
-We need an ID, data and a date column. the date column has to be of class Date.
+Checks the format whether the format for the data set is a time block based
 }
 \keyword{internal}

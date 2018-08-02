@@ -341,4 +341,20 @@ checkResponseFormat <- function(df, idColumn, blockColumn, sexColumn, responseCo
   result
 }
 
-
+#' Plot the score of an individual patient for all blocks (with binary medication data)
+#'
+#'
+#' @param scoreData data frame containing at least the PATIENT, BLOCK, phenoScore and binaryRAAS
+#' @param patient patient number to plot
+#' @return a ggplot element that can be plotted with the plot function
+#' @keywords internal
+#' @importFrom magrittr %>%
+#' @importFrom ggplot2 ggplot
+#' @importFrom ggplot2 aes
+#' @importFrom ggplot2 geom_line
+#' @importFrom ggplot2 facet_grid
+plotIndividualScore <- function(scoreData, patient){
+  scoreData <-  scoreData %>% filter(!(is.na(phenoScore)))
+  p <- ggplot(scoreData %>% filter(PATIENT == patient), aes(as.factor(BLOCK), phenoScore, colour = as.factor(binaryRAAS))) + geom_line(aes(group = PATIENT)) + facet_grid(PATIENT ~ .)
+  p
+}
