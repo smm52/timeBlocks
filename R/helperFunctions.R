@@ -315,22 +315,25 @@ checkStructureColumnResponse <- function(columnName,df) {
 
 #' Checks the format whether the format for the data set is a time block based
 #'
-#' We need an ID, data and a date column. the date column has to be of class Date.
 #'
 #' @param df the data frame to check
 #' @param idColumn name of ID column
 #' @param blockColumn name of time block column
+#' @param sexColumn name of the sex column (optional)
 #' @param responseColumn name of the column containing the patient block value for a biomarker
-#' @return NULL if there are format problems, otherwise a data frame that has a PATIENT, VISIT and MEASURE column
+#' @return NULL if there are format problems
 #' @keywords internal
 #' @importFrom magrittr %>%
-checkResponseFormat <- function(df, idColumn, blockColumn, responseColumns) {
+checkResponseFormat <- function(df, idColumn, blockColumn, sexColumn, responseColumns) {
   result <- NULL
   if (length(responseColumns) > 0) {
-    if (checkStructureColumn(idColumn, df) & checkStructureColumn(blockColumn, df)) {
+    if (checkStructureColumn(idColumn, df) && checkStructureColumn(blockColumn, df) && (is.na(sexColumn) || (checkStructureColumn(sexColumn, df) && length(unique(df[,sexColumn])) == 2))){
       if(all(responseColumns %>% lapply(checkStructureColumnResponse,df) %>% unlist())){
         names(df)[which(names(df) == idColumn)] <- "PATIENT"
         names(df)[which(names(df) == blockColumn)] <- "BLOCK"
+        if(!is.na(sexColumn)){
+          names(df)[which(names(df) == sexColumn)] <- "SEX"
+        }
         result <- df
       }
     }
