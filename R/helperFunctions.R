@@ -355,6 +355,12 @@ checkResponseFormat <- function(df, idColumn, blockColumn, sexColumn, responseCo
 #' @importFrom ggplot2 facet_grid
 plotIndividualScore <- function(scoreData, patient){
   scoreData <-  scoreData %>% filter(!(is.na(phenoScore)))
-  p <- ggplot(scoreData %>% filter(PATIENT == patient), aes(as.factor(BLOCK), phenoScore, colour = as.factor(binaryRAAS))) + geom_line(aes(group = PATIENT)) + facet_grid(PATIENT ~ .)
+  p <- ggplot(scoreData %>% filter(PATIENT == patient), aes(as.factor(BLOCK), phenoScore, colour = as.factor(anyRAASBinary))) + 
+    geom_line(aes(group = PATIENT)) + 
+    facet_grid(PATIENT ~ .) +
+    scale_colour_discrete(name  ="RAAS",
+                          breaks=c("0", "1"),
+                          labels=c("No", "Yes"), 
+                          drop = FALSE)
   p
 }
