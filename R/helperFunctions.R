@@ -89,6 +89,31 @@ checkBaselineFormat <- function(df, idColumn = "PATIENT", dateColumn = "VISIT") 
   result
 }
 
+#' Checks the format of the hospital data
+#'
+#' We need an ID and two date columns. The date columns have to be of class Date.
+#'
+#' @param df the data frame to check
+#' @param idColumn name of ID column: default is PATIENT
+#' @param startDateColumn name of date column: default is VISIT_START. This column has to be of class Date
+#' @param endDateColumn name of date column: default is VISIT_END. This column has to be of class Date
+#' @return  NULL if there are format problems, otherwise a data frame that has a PATIENT andVISIT column
+#' @keywords internal
+#' @importFrom magrittr %>%
+#' @importFrom magrittr extract2
+checkBaselineHospitalFormat <- function(df, idColumn = "PATIENT", startDateColumn = "VISIT_START", endDateColumn = "VISIT_END") {
+  result <- NULL
+  if (class(df %>% extract2(startDateColumn)) == "Date" & class(df %>% extract2(endDateColumn)) == "Date") {
+    if (checkStructureColumn(idColumn, df) & checkStructureColumn(startDateColumn, df) & checkStructureColumn(endDateColumn, df)) {
+      names(df)[which(names(df) == idColumn)] <- "PATIENT"
+      names(df)[which(names(df) == startDateColumn)] <- "VISIT_START"
+      names(df)[which(names(df) == endDateColumn)] <- "VISIT_END"
+      result <- df
+    }
+  }
+  result
+}
+
 #' Checks the format of the data set for the prescriptions
 #'
 #' We need an ID, date column, ATC and DDD column. The date column has to be of class Date.
@@ -156,6 +181,69 @@ findClosestToBaseline <- function(serialDf, baselineDates, blDayDiff = 90, idCol
     }
   }
   baselineDates$BL_MEASURE_DATE <- as.Date(baselineDates$BL_MEASURE_DATE)
+  baselineDates
+}
+
+#' Finds the length of a hospital stay at the baseline block
+#'
+#' Finds the length of hospital stays around baseline
+#'
+#' @param df the data frame to check
+#' @param dayDiff time around baseline (default: 90 days, will look three months before and after baseline)
+#' @inheritParams checkBaselineHospitalFormat
+#' @param countNights whether to count nights or days in hopsital (if night, than an outpatient stay has length 0, otherwise 1)
+#' @return data frame with baseline measure or NA if no measurement was close to baseline
+#' @export
+#' @importFrom magrittr %>%
+#' @importFrom magrittr extract2
+#' @importFrom dplyr rowwise
+#' @importFrom dplyr mutate
+findBaselineHospitalStay <- function(serialDf, baselineDates = baselineInfo, 
+                                     blDayDiff = blDayDiff, idColumn = "PATIENT", 
+                                     startDateColumn = "VISIT_START",  
+                                     endDateColumn = "VISIT_END", blDateColumn = "VISIT",
+                                     countNights = TRUE){
+  serialDf <- serialDf %>% 
+    checkBaselineHospitalFormat(idColumn = idColumn, startDateColumn = startDateColumn, 
+                                endDateColumn = endDateColumn)
+  if (is.null(serialDf)) {
+    stop("incorrect format of serial input data")
+  }
+  baselineDates <- baselineDates %>%
+    checkBaselineFormat(idColumn = idColumn, dateColumn = blDateColumn)
+  if (is.null(baselineDates)) {
+    stop("incorrect format of baseline input data")
+  }
+  if(countNights == TRUE){
+    baselineDates <- baselineDates %>% mutate(BL_HOSPITAL_NIGHTS = 0)
+  } else {
+    baselineDates <- baselineDates %>% mutate(BL_HOSPITAL_DAYS = 0)  
+  }
+  if(nrow(serialDf) > 0){
+    for (i in 1:nrow(baselineDates)) {
+      df <- serialDf[which(serialDf$PATIENT == baselineDates[[i, "PATIENT"]]), ]
+      startDate <- as.Date(baselineDates[[i, "VISIT"]]) - blDayDiff
+      endDate <- as.Date(baselineDates[[i, "VISIT"]]) + blDayDiff
+      df <- df %>% filter(startDate <= VISIT_END & endDate >= VISIT_START)
+      if (nrow(df) > 0) {
+        df <- df %>% 
+          mutate(VISIT_END = safe.ifelse(VISIT_END > endDate,endDate,VISIT_END))
+        df <- df %>% 
+          mutate(VISIT_START = safe.ifelse(VISIT_START < startDate,startDate,VISIT_START))
+        df <- df %>%
+          rowwise() %>%
+          mutate(hospitalTime = 
+                   safe.ifelse(countNights == TRUE,
+                               as.numeric(VISIT_END - VISIT_START),
+                               as.numeric(VISIT_END - VISIT_START) + 1))
+        if(countNights == TRUE){
+          baselineDates[i,'BL_HOSPITAL_NIGHTS'] <- sum(df$hospitalTime)
+        } else {
+          baselineDates[i,'BL_HOSPITAL_DAYS'] <- sum(df$hospitalTime)
+        }
+      }
+    }
+  }
   baselineDates
 }
 
@@ -265,7 +353,7 @@ doInterpolate <- function(dataDF, dateDF, timeframe, baselineDate) {
 makeLong <- function(df, dataName, idColumn) {
   df1 <- df %>% select(c(starts_with(dataName), starts_with(idColumn)))
   df1 <- gather(df1, key, value, -PATIENT) %>% separate(key, sep = "_", into = c(dataName, "block")) %>% spread(dataName, value)
-
+  
   # check whether there are date columns
   if (ncol(df %>% select(starts_with("date"))) > 0) {
     df2 <- df %>% select(c(starts_with("date"), starts_with(idColumn))) %>% mutate_at(vars(starts_with("date")), as.character)

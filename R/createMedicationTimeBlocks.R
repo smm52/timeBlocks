@@ -78,34 +78,34 @@ createMedicationTimeBlocks <- function(serialDf, baselineInfo, studyStartDate, s
   if (nrow(serialDf) == 0) {
     stop("Serial data does not contain any data for the patients.")
   }
-
+  
   # for each patient we need to know when they started or ended taking any medication to calculate follow-up times and to know whether a block
   # will be NA (because no information avaialble) or 0 (no prescription with atcCode but other)
   prescritptionDataAvailable <- serialDf %>% group_by(PATIENT) %>% summarise_at(vars(VISIT), funs(min, max), na.rm = TRUE)
-
+  
   # restrict serial to ATC code under investigation
   serialDf <- serialDf %>% filter(grepl(atcCode, ATC))
   # if (nrow(serialDf) == 0) { stop('Serial data contains no prescriptions with the specific ATC code expression.') }
-
+  
   # create baseline information
   baselineInfo <- findPrescriptionstAtBaseline(prescriptions = serialDf, baselineDates = baselineInfo, anyPrescriptions = prescritptionDataAvailable,
                                                blockDays = blockDays, useDoses = useDoses)
-
+  
   # restrict serial data and remove all prescriptions outside the study period
   serialDf <- serialDf %>% filter(VISIT <= studyEndDate & VISIT >= studyStartDate)
   # check whether there are patients if (nrow(serialDf) == 0) { stop('Serial data does not contain any data for the study period.') }
-
-
+  
+  
   # initialise
   allRecords <- list()
   maxContainers <- 0
   maxContainersBeforeBl <- 0
-
+  
   # go through all individual drug records
   for (i in 1:nrow(baselineInfo)) {
     myPatient <- baselineInfo[i, ]
     myBaselineDate <- myPatient$VISIT
-
+    
     # how many consecutive blocks immediately after baseline are NA
     emptyBlocksAfterBl <- 0
     longitudonalRecord <- list()
@@ -114,14 +114,14 @@ createMedicationTimeBlocks <- function(serialDf, baselineInfo, studyStartDate, s
     timeContainers <- 0
     timeContainersBeforeBl <- 0
     lengthFollowUp <- 0
-
+    
     # put baseline in
     longitudonalRecord[1] <- myPatient$BL_MEASURE
     longitudonalRecordNames[1] <- paste0(paste0(dataName, "_"), 0)
-
+    
     # did the patient take any medication
     myAllPrescriptions <- prescritptionDataAvailable %>% filter(PATIENT == myPatient$PATIENT)
-
+    
     if (nrow(myAllPrescriptions) > 0) {
       anyPrescriptionStart <- myAllPrescriptions$min
       anyPrescriptionEnd <- myAllPrescriptions$max
@@ -138,16 +138,16 @@ createMedicationTimeBlocks <- function(serialDf, baselineInfo, studyStartDate, s
       maxContainers <- max(maxContainers, timeContainers)
       maxContainersBeforeBl <- max(maxContainersBeforeBl, timeContainersBeforeBl)
       containerStart <- myBaselineDate
-
+      
       # did this specific patient have any prescriptions of the chosen atcCode
       myPrescriptions <- serialDf %>% filter(PATIENT == myPatient$PATIENT)
-
+      
       # go through all timeContianers after baseline
       if (timeContainers > 0) {
         for (j in 1:timeContainers) {
           containerEnd <- containerStart + blockDays
           myContrainerPrescriptions <- myPrescriptions %>% filter(VISIT > containerStart & VISIT <= containerEnd)
-
+          
           # were their prescriptions for the patient in the timeContainer
           if (nrow(myContrainerPrescriptions) > 0) {
             # for binary containers mark them with 1 otherwise sum up the dose
@@ -156,7 +156,7 @@ createMedicationTimeBlocks <- function(serialDf, baselineInfo, studyStartDate, s
             } else {
               longitudonalRecord[j + 1] <- sum(myContrainerPrescriptions$cDDD, na.rm = TRUE)
             }
-
+            
           } else {
             longitudonalRecord[j + 1] <- safe.ifelse(containerStart <= myAllPrescriptions$max & containerEnd >= myAllPrescriptions$min,
                                                      0, NA)
@@ -164,18 +164,18 @@ createMedicationTimeBlocks <- function(serialDf, baselineInfo, studyStartDate, s
               emptyBlocksAfterBl <- j
             }
           }
-
+          
           # add the container name
           longitudonalRecordNames[j + 1] <- paste0(paste0(dataName, "_"), j)
-
+          
           # remember what happened at the end of follow-up
           finalRecord <- longitudonalRecord[[j + 1]]
-
+          
           # initialise next container
           containerStart <- containerEnd
         }
       }
-
+      
       # go through all timeContianers before baseline
       if (timeContainersBeforeBl > 0) {
         containerEnd <- myBaselineDate
@@ -183,7 +183,7 @@ createMedicationTimeBlocks <- function(serialDf, baselineInfo, studyStartDate, s
           containerStart <- containerEnd - blockDays
           index <- timeContainers + j
           myContrainerPrescriptions <- myPrescriptions %>% filter(VISIT > containerStart & VISIT <= containerEnd)
-
+          
           # were their prescriptions for the patient in the timeContainer
           if (nrow(myContrainerPrescriptions) > 0) {
             # for binary containers mark them with 1 otherwise sum up the dose
@@ -192,40 +192,40 @@ createMedicationTimeBlocks <- function(serialDf, baselineInfo, studyStartDate, s
             } else {
               longitudonalRecord[index + 1] <- sum(myContrainerPrescriptions$cDDD, na.rm = TRUE)
             }
-
+            
           } else {
             longitudonalRecord[index + 1] <- safe.ifelse(containerStart <= myAllPrescriptions$max & containerEnd >= myAllPrescriptions$min,
                                                          0, NA)
           }
-
+          
           # add the container name
           longitudonalRecordNames[index + 1] <- paste0(paste0(dataName, "_"), as.character(j * -1))
-
+          
           # initialise next container
           containerEnd <- containerStart
         }
       }
     }
-
+    
     # create one dataframe with all the data
     dbRecord <- longitudonalRecord %>% unlist() %>% t() %>% as.data.frame()
     names(dbRecord) <- longitudonalRecordNames %>% unlist()
-
+    
     # add patient information and follow-up time
     dbRecord <- dbRecord %>% mutate(PATIENT = myPatient$PATIENT)
     dbRecord <- dbRecord %>% mutate(timeWithFollowUpRecords = lengthFollowUp)
     dbRecord <- dbRecord %>% mutate(totalTimeWithRecords = lengthStudyRecords)
     dbRecord <- dbRecord %>% mutate(finalRecord = finalRecord)
-
+    
     # set empty baseline to no use if there is no data before baseline and individuals have actually been followed up
     if (noUseAtBaseline & is.na(myPatient$BL_MEASURE) & dbRecord$timeWithFollowUpRecords > 0 & dbRecord$timeWithFollowUpRecords == dbRecord$totalTimeWithRecords) {
       dbRecord <- noUseAtMissingBaseline(dbRecord, blockLength = emptyBlocksAfterBl, dataName = dataName)
     }
-
+    
     allRecords[[i]] <- dbRecord
   }
   resultDf <- allRecords %>% ldply()
-
+  
   # create wide form
   if (!longFormat) {
     # create a sort order for the headings
@@ -237,7 +237,7 @@ createMedicationTimeBlocks <- function(serialDf, baselineInfo, studyStartDate, s
     } else {
       sortedHeadings <- c("PATIENT", "totalTimeWithRecords", "timeWithFollowUpRecords", "finalRecord", paste0(paste0(dataName, "_"), 0))
     }
-
+    
     # re-order the dataframe according to the headings
     resultDf <- resultDf %>% select(sortedHeadings)
   } else {
@@ -245,6 +245,6 @@ createMedicationTimeBlocks <- function(serialDf, baselineInfo, studyStartDate, s
     resultDf <- makeLong(resultDf, dataName = dataName, idColumn = idColumn)
   }
   resultDf
-
+  
 }
 

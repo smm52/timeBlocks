@@ -4,8 +4,8 @@
 \alias{findPrescriptionstAtBaseline}
 \title{Finds the prescription information around the baseline visit}
 \usage{
-findPrescriptionstAtBaseline(prescriptions, baselineDates, anyPrescriptions,
-  blockDays, useDoses)
+findPrescriptionstAtBaseline(prescriptions, baselineDates,
+  anyPrescriptions, blockDays, useDoses)
 }
 \arguments{
 \item{baselineDates}{the dataframe with all patient IDs and baseline visit dates}

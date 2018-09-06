@@ -4,7 +4,8 @@
 \alias{calculateInterpolation}
 \title{calculate the linear interpolation from one measurement to the next available one}
 \usage{
-calculateInterpolation(toInterpolate, dataDF, dateDF, timeframe, baselineDate)
+calculateInterpolation(toInterpolate, dataDF, dateDF, timeframe,
+  baselineDate)
 }
 \arguments{
 \item{toInterpolate}{index position of the start of the interpolation}
