@@ -141,6 +141,32 @@ checkPrescriptionFormat <- function(df, idColumn = "PATIENT", dateColumn = "VISI
   result
 }
 
+#' Checks the format of the data set for the prescriptions (without DDDs)
+#'
+#' We need an ID, date column and ATC. The date column has to be of class Date.
+#'
+#' @param df the data frame to check
+#' @param idColumn name of ID column: default is PATIENT
+#' @param dateColumn name of date column: default is VISIT. This column has to be of class Date
+#' @param atcColumn name of the ATC column: default is ATC
+#' @return NULL if there are format problems, otherwise a data frame that has a PATIENT, VISIT, ATC 
+#' @keywords internal
+#' @importFrom magrittr %>%
+#' @importFrom magrittr extract2
+checkBinaryPrescriptionFormat <- function(df, idColumn = "PATIENT", dateColumn = "VISIT", atcColumn = "ATC") {
+  result <- NULL
+  if (class(df %>% extract2(dateColumn)) == "Date") {
+    if (checkStructureColumn(idColumn, df) & checkStructureColumn(dateColumn, df) & checkStructureColumn(atcColumn, df)) {
+      names(df)[which(names(df) == idColumn)] <- "PATIENT"
+      names(df)[which(names(df) == dateColumn)] <- "VISIT"
+      names(df)[which(names(df) == atcColumn)] <- "ATC"
+      result <- df
+    }
+  }
+  result
+}
+
+
 
 #' Finds the measurement date that is closest to baseline
 #'
