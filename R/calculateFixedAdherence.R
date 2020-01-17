@@ -30,6 +30,7 @@ calculateFixedAdherence <- function(serialDf, startDates = NA, atcCode = "C09", 
   if (refillPeriod <= 0) {
     stop("The refill period cannot be 0 or negative")
   }
+  
   # check baseline data
   if(!is.null(nrow(startDates))){
     startDate <- checkBaselineFormat(startDates, idColumn = idColumn, dateColumn = dateColumn)
@@ -37,6 +38,8 @@ calculateFixedAdherence <- function(serialDf, startDates = NA, atcCode = "C09", 
       stop("incorrect format of start dates")
     }
   }
+  
+  
   # check serial prescription data
   serialDf <- checkBinaryPrescriptionFormat(serialDf, idColumn = idColumn, dateColumn = dateColumn, atcColumn = atcColumn)
   if (is.null(serialDf)) {
@@ -64,7 +67,7 @@ calculateFixedAdherence <- function(serialDf, startDates = NA, atcCode = "C09", 
   
   #create results data frame
   resultsDf <- data.frame(PATIENT=character(),adherence=double(),firstPrescription=character(),lastPrescription=character(),
-                          lastCoverDate=character(), stringsAsFactors = F)
+                          lastCoverDate=character(), numPrescriptions=numeric(), stringsAsFactors = F)
   
   allPatients <- unique(serialDf$PATIENT)
   #go through all patients
@@ -79,12 +82,13 @@ calculateFixedAdherence <- function(serialDf, startDates = NA, atcCode = "C09", 
       myPrescriptions <- myPrescriptions %>%
         filter(VISIT >= myStartDate)
     }
-    #if there are 0 prescriptions, there is 0 adherence, if there is 1 prescription, the adherence period is the refill period
+    #if there are 0 prescriptions, there is 0 adherence, if there is 1 prescription, the adhrence period is the refill period
     if(nrow(myPrescriptions) > 1){
       resultsDf[i,'firstPrescription'] <- as.character(as.Date(min(myPrescriptions$VISIT)))
       resultsDf[i,'lastPrescription'] <- as.character(as.Date(max(myPrescriptions$VISIT)))
       resultsDf[i,'lastCoverDate'] <- as.character(as.Date(max(myPrescriptions$VISIT)) + refillPeriod)
-      daysToCover <- as.numeric(max(myPrescriptions$VISIT) - min(myPrescriptions$VISIT))
+      resultsDf[i,'numPrescriptions'] <- nrow(myPrescriptions)
+      daysToCover <- as.numeric(max(myPrescriptions$VISIT) - min(myPrescriptions$VISIT)) + refillPeriod
       #go through the precsriptions in a sorted way starting from the earliest
       myPrescriptions <- myPrescriptions %>%
         arrange(VISIT)
@@ -102,11 +106,13 @@ calculateFixedAdherence <- function(serialDf, startDates = NA, atcCode = "C09", 
       resultsDf[i,'firstPrescription'] <- NA
       resultsDf[i,'lastPrescription'] <- NA
       resultsDf[i,'lastCoverDate'] <- NA
+      resultsDf[i,'numPrescriptions'] <- 0
     } else if(nrow(myPrescriptions) == 1){
       resultsDf[i,'adherence'] <- 1
       resultsDf[i,'firstPrescription'] <- as.character(as.Date(min(myPrescriptions$VISIT)))
       resultsDf[i,'lastPrescription'] <- as.character(as.Date(min(myPrescriptions$VISIT)))
       resultsDf[i,'lastCoverDate'] <- as.character(as.Date(min(myPrescriptions$VISIT)) + refillPeriod)
+      resultsDf[i,'numPrescriptions'] <- 1
     }
   }
   resultsDf$firstPrescription <- as.Date(resultsDf$firstPrescription)
