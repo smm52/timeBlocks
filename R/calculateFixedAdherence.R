@@ -34,7 +34,7 @@ calculateFixedAdherence <- function(serialDf, startDates = NA, atcCode = "C09", 
   if(!is.null(nrow(startDates))){
     startDate <- checkBaselineFormat(startDates, idColumn = idColumn, dateColumn = dateColumn)
     if (is.null(startDate)) {
-      stop("incorrect format of start dates")
+      stop("incorrect format of start dates. Check column class. No missing values allowed.")
     }
   }
   
@@ -42,7 +42,7 @@ calculateFixedAdherence <- function(serialDf, startDates = NA, atcCode = "C09", 
   # check serial prescription data
   serialDf <- checkBinaryPrescriptionFormat(serialDf, idColumn = idColumn, dateColumn = dateColumn, atcColumn = atcColumn)
   if (is.null(serialDf)) {
-    stop("incorrect format of serial prescription input data")
+    stop("incorrect format of serial prescription input data. Check column class. No missing values allowed.")
   }
   # restrict serial data to patients in startDates (if available)
   if(!is.null(nrow(startDates))){
@@ -68,7 +68,12 @@ calculateFixedAdherence <- function(serialDf, startDates = NA, atcCode = "C09", 
   resultsDf <- data.frame(PATIENT=character(),adherence=double(),firstPrescription=character(),lastPrescription=character(),
                           lastCoverDate=character(), numPrescriptions=numeric(), stringsAsFactors = F)
   
-  allPatients <- unique(serialDf$PATIENT)
+  #if there are start dates, use the start date patients to iterate over to find adherence, otherwise use all patients in the prescriptions
+  if(!is.null(nrow(startDates))){
+    allPatients <- unique(startDates$PATIENT)   
+  } else {
+    allPatients <- unique(serialDf$PATIENT)  
+  }
   #go through all patients
   for(i in 1:length(allPatients)){
     myPatient <- allPatients[i]
