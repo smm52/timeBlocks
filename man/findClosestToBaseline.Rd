@@ -4,8 +4,14 @@
 \alias{findClosestToBaseline}
 \title{Finds the measurement date that is closest to baseline}
 \usage{
-findClosestToBaseline(serialDf, baselineDates, blDayDiff = 90,
-  idColumn = "PATIENT", dateColumn = "VISIT", dataColumn = "MEASURE")
+findClosestToBaseline(
+  serialDf,
+  baselineDates,
+  blDayDiff = 90,
+  idColumn = "PATIENT",
+  dateColumn = "VISIT",
+  dataColumn = "MEASURE"
+)
 }
 \arguments{
 \item{idColumn}{name of ID column: default is PATIENT}

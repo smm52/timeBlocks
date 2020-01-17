@@ -4,11 +4,22 @@
 \alias{createTimeBlocks}
 \title{Calculates the time block data}
 \usage{
-createTimeBlocks(serialDf, baselineInfo, studyStartDate, studyEndDate,
-  blockDays = 365.25, interpolate = TRUE, measureIsFactor = FALSE,
-  blockSummaryStats = "median", blDayDiff = 90, idColumn = "PATIENT",
-  dateColumn = "VISIT", dataColumn = "MEASURE", dataName = "measure",
-  longFormat = TRUE)
+createTimeBlocks(
+  serialDf,
+  baselineInfo,
+  studyStartDate,
+  studyEndDate,
+  blockDays = 365.25,
+  interpolate = TRUE,
+  measureIsFactor = FALSE,
+  blockSummaryStats = "median",
+  blDayDiff = 90,
+  idColumn = "PATIENT",
+  dateColumn = "VISIT",
+  dataColumn = "MEASURE",
+  dataName = "measure",
+  longFormat = TRUE
+)
 }
 \arguments{
 \item{serialDf}{the data frame with the serial data}

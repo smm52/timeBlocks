@@ -4,10 +4,16 @@
 \alias{findBaselineHospitalStay}
 \title{Finds the length of a hospital stay at the baseline block}
 \usage{
-findBaselineHospitalStay(serialDf, baselineDates = baselineInfo,
-  blDayDiff = blDayDiff, idColumn = "PATIENT",
-  startDateColumn = "VISIT_START", endDateColumn = "VISIT_END",
-  blDateColumn = "VISIT", countNights = TRUE)
+findBaselineHospitalStay(
+  serialDf,
+  baselineDates = baselineInfo,
+  blDayDiff = blDayDiff,
+  idColumn = "PATIENT",
+  startDateColumn = "VISIT_START",
+  endDateColumn = "VISIT_END",
+  blDateColumn = "VISIT",
+  countNights = TRUE
+)
 }
 \arguments{
 \item{idColumn}{name of ID column: default is PATIENT}

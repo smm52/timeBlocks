@@ -4,9 +4,14 @@
 \alias{calculateResponseScore}
 \title{Calculates a score based on principle component analysis}
 \usage{
-calculateResponseScore(responseDf, idColumn = "PATIENT",
-  blockColumn = "block", sexColumn = NA, responseColumns,
-  confounderColumns = NA)
+calculateResponseScore(
+  responseDf,
+  idColumn = "PATIENT",
+  blockColumn = "block",
+  sexColumn = NA,
+  responseColumns,
+  confounderColumns = NA
+)
 }
 \arguments{
 \item{responseDf}{the data frame that contains the time blocks and the biomarker data per time block}

@@ -4,11 +4,20 @@
 \alias{createHospitalTimeBlocks}
 \title{Calculates block data for hospitalisations}
 \usage{
-createHospitalTimeBlocks(serialDf, baselineInfo, studyStartDate,
-  studyEndDate, blockDays = 365.25, blDayDiff = 90,
-  idColumn = "PATIENT", startDateColumn = "VISIT_START",
-  endDateColumn = "VISIT_END", countNights = TRUE,
-  blDateColumn = "VISIT", longFormat = TRUE)
+createHospitalTimeBlocks(
+  serialDf,
+  baselineInfo,
+  studyStartDate,
+  studyEndDate,
+  blockDays = 365.25,
+  blDayDiff = 90,
+  idColumn = "PATIENT",
+  startDateColumn = "VISIT_START",
+  endDateColumn = "VISIT_END",
+  countNights = TRUE,
+  blDateColumn = "VISIT",
+  longFormat = TRUE
+)
 }
 \arguments{
 \item{serialDf}{the data frame with the hospital events (one row per event)}

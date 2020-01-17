@@ -4,11 +4,22 @@
 \alias{createMedicationTimeBlocks}
 \title{Calculates the time block data for prescriptions}
 \usage{
-createMedicationTimeBlocks(serialDf, baselineInfo, studyStartDate,
-  studyEndDate, atcCode = "C09", blockDays = 365.25,
-  useDoses = FALSE, idColumn = "PATIENT", dateColumn = "VISIT",
-  atcColumn = "ATC", dddColumn = "cDDD", dataName = "prescription",
-  longFormat = TRUE, noUseAtBaseline = FALSE)
+createMedicationTimeBlocks(
+  serialDf,
+  baselineInfo,
+  studyStartDate,
+  studyEndDate,
+  atcCode = "C09",
+  blockDays = 365.25,
+  useDoses = FALSE,
+  idColumn = "PATIENT",
+  dateColumn = "VISIT",
+  atcColumn = "ATC",
+  dddColumn = "cDDD",
+  dataName = "prescription",
+  longFormat = TRUE,
+  noUseAtBaseline = FALSE
+)
 }
 \arguments{
 \item{serialDf}{the data frame with the serial data}

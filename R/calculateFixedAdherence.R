@@ -12,7 +12,6 @@
 #' @importFrom magrittr %>%
 #' @importFrom dplyr filter
 #' @importFrom dplyr mutate
-#' @importFrom dplyr arrange
 
 calculateFixedAdherence <- function(serialDf, startDates = NA, atcCode = "C09", refillPeriod = 90, 
                                     idColumn = "PATIENT", dateColumn = "VISIT", atcColumn = "ATC") {
@@ -90,8 +89,7 @@ calculateFixedAdherence <- function(serialDf, startDates = NA, atcCode = "C09", 
       resultsDf[i,'numPrescriptions'] <- nrow(myPrescriptions)
       daysToCover <- as.numeric(max(myPrescriptions$VISIT) - min(myPrescriptions$VISIT)) + refillPeriod
       #go through the precsriptions in a sorted way starting from the earliest
-      myPrescriptions <- myPrescriptions %>%
-        arrange(VISIT)
+      myPrescriptions <- myPrescriptions[order(myPrescriptions$VISIT),]
       uncoveredDays <- 0
       for(j in 2:nrow(myPrescriptions)){
         pOld <- myPrescriptions[(j-1),'VISIT'][[1]]

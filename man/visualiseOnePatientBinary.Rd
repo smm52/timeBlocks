@@ -4,9 +4,15 @@
 \alias{visualiseOnePatientBinary}
 \title{Creates a simple visualisation for serial and binary prescription data for one patient}
 \usage{
-visualiseOnePatientBinary(df, patient, idColumn = "PATIENT",
-  blockColumn = "block", dataColumn = "measure",
-  dateColumn = "date.measure", prescriptionColumn = "prescription")
+visualiseOnePatientBinary(
+  df,
+  patient,
+  idColumn = "PATIENT",
+  blockColumn = "block",
+  dataColumn = "measure",
+  dateColumn = "date.measure",
+  prescriptionColumn = "prescription"
+)
 }
 \arguments{
 \item{df}{the response data frame. It needs to contain binary prescription information.}
