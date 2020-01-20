@@ -81,10 +81,12 @@ calculateFixedAdherence <- function(serialDf, startDates = NA, atcCode = "C09", 
     myPrescriptions <- serialDf %>%
       filter(PATIENT == myPatient)
     #restrict prescription for this patient to start at a certain time (optional)
-    if(!is.null(nrow(startDates))){
-      myStartDate <- (startDates %>% filter(PATIENT == myPatient))$VISIT
-      myPrescriptions <- myPrescriptions %>%
-        filter(VISIT >= myStartDate)
+    if(nrow(myPrescriptions) > 0){
+      if(!is.null(nrow(startDates))){
+        myStartDate <- (startDates %>% filter(PATIENT == myPatient))$VISIT
+        myPrescriptions <- myPrescriptions %>%
+          filter(VISIT >= myStartDate)
+      }
     }
     #if there are 0 prescriptions, there is 0 adherence, if there is 1 prescription, the adhrence period is the refill period
     if(nrow(myPrescriptions) > 1){
