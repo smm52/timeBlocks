@@ -114,7 +114,7 @@ calculateFixedAdherence <- function(serialDf, startDates = NA, atcCode = "C09", 
         if(as.numeric(pNew - pOld) > refillPeriod){
           if(is.na(stopPeriod)){
             uncoveredDays <- uncoveredDays + as.numeric((pNew - pOld)) - refillPeriod
-          } else if(as.numeric(pNew - pOld) > stopPeriod){
+          } else if(as.numeric(pNew - pOld) > (stopPeriod + refillPeriod)){
             stoppedDays <- stoppedDays + as.numeric((pNew - pOld))
             numStops <- numStops + 1
             daysToCover <- daysToCover - as.numeric((pNew - pOld)) 
