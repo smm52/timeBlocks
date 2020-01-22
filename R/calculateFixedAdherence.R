@@ -4,6 +4,7 @@
 #' @param startDates dataframe with ID and a date to start the adherence calculation (optional)
 #' @param atcCode regular expression for the class of medication ATC code (default: C09 which stands for any RAAS)
 #' @param refillPeriod length of the refill period (default 90 days)
+#' @param stopPeriod number of days after which the medication is considered to have stopped (optional)
 #' @param idColumn name of ID column: default is PATIENT
 #' @param dateColumn name of date column: default is VISIT. This column has to be of class Date
 #' @param atcColumn name of the column with the ATC codes: default is ATC
@@ -13,7 +14,7 @@
 #' @importFrom dplyr filter
 #' @importFrom dplyr mutate
 
-calculateFixedAdherence <- function(serialDf, startDates = NA, atcCode = "C09", refillPeriod = 90, 
+calculateFixedAdherence <- function(serialDf, startDates = NA, atcCode = "C09", refillPeriod = 90, stopPeriod = NA,
                                     idColumn = "PATIENT", dateColumn = "VISIT", atcColumn = "ATC") {
   # check data frames
   if (nrow(serialDf) == 0 ) {
@@ -28,6 +29,12 @@ calculateFixedAdherence <- function(serialDf, startDates = NA, atcCode = "C09", 
   # check block length
   if (refillPeriod <= 0) {
     stop("The refill period cannot be 0 or negative")
+  }
+  
+  if(!is.na(stopPeriod)){
+    if(stopPeriod <= refillPeriod){
+      stop("Stop period needs to be bigger than the refill period")
+    }
   }
   
   # check baseline data
@@ -66,7 +73,8 @@ calculateFixedAdherence <- function(serialDf, startDates = NA, atcCode = "C09", 
   
   #create results data frame
   resultsDf <- data.frame(PATIENT=character(),adherence=double(),firstPrescription=character(),lastPrescription=character(),
-                          lastCoverDate=character(), numPrescriptions=numeric(), stringsAsFactors = F)
+                          lastCoverDate=character(), numPrescriptions=numeric(), startStops=numeric(), stoppedYears = double(),
+                          coveredYears = double(), stringsAsFactors = F)
   
   #if there are start dates, use the start date patients to iterate over to find adherence, otherwise use all patients in the prescriptions
   if(!is.null(nrow(startDates))){
@@ -98,26 +106,45 @@ calculateFixedAdherence <- function(serialDf, startDates = NA, atcCode = "C09", 
       #go through the precsriptions in a sorted way starting from the earliest
       myPrescriptions <- myPrescriptions[order(myPrescriptions$VISIT),]
       uncoveredDays <- 0
+      stoppedDays <- 0
+      numStops <- 0
       for(j in 2:nrow(myPrescriptions)){
         pOld <- myPrescriptions[(j-1),'VISIT'][[1]]
         pNew <- myPrescriptions[j,'VISIT'][[1]]
         if(as.numeric(pNew - pOld) > refillPeriod){
-          uncoveredDays <- uncoveredDays + as.numeric((pNew - pOld)) - refillPeriod
+          if(is.na(stopPeriod)){
+            uncoveredDays <- uncoveredDays + as.numeric((pNew - pOld)) - refillPeriod
+          } else if(as.numeric(pNew - pOld) > stopPeriod){
+            stoppedDays <- stoppedDays + as.numeric((pNew - pOld))
+            numStops <- numStops + 1
+            daysToCover <- daysToCover - as.numeric((pNew - pOld)) 
+          } else {
+            uncoveredDays <- uncoveredDays + as.numeric((pNew - pOld)) - refillPeriod  
+          }
         }  
       }
       resultsDf[i,'adherence'] <- (daysToCover - uncoveredDays)/daysToCover
+      resultsDf[i,'coveredYears'] <- (daysToCover - uncoveredDays)/365.25
+      resultsDf[i,'startStops'] <- numStops
+      resultsDf[i,'stoppedYears'] <- stoppedDays/365.25
     } else if(nrow(myPrescriptions) == 0){
       resultsDf[i,'adherence'] <- 0
       resultsDf[i,'firstPrescription'] <- NA
       resultsDf[i,'lastPrescription'] <- NA
       resultsDf[i,'lastCoverDate'] <- NA
       resultsDf[i,'numPrescriptions'] <- 0
+      resultsDf[i,'startStops'] <- NA
+      resultsDf[i,'stoppedYears'] <- NA
+      resultsDf[i,'coveredYears'] <- 0
     } else if(nrow(myPrescriptions) == 1){
       resultsDf[i,'adherence'] <- 1
       resultsDf[i,'firstPrescription'] <- as.character(as.Date(min(myPrescriptions$VISIT)))
       resultsDf[i,'lastPrescription'] <- as.character(as.Date(min(myPrescriptions$VISIT)))
       resultsDf[i,'lastCoverDate'] <- as.character(as.Date(min(myPrescriptions$VISIT)) + refillPeriod)
       resultsDf[i,'numPrescriptions'] <- 1
+      resultsDf[i,'startStops'] <- 0
+      resultsDf[i,'stoppedYears'] <- 0
+      resultsDf[i,'coveredYears'] <- refillPeriod/365.25
     }
   }
   resultsDf$firstPrescription <- as.Date(resultsDf$firstPrescription)

@@ -9,6 +9,7 @@ calculateFixedAdherence(
   startDates = NA,
   atcCode = "C09",
   refillPeriod = 90,
+  stopPeriod = NA,
   idColumn = "PATIENT",
   dateColumn = "VISIT",
   atcColumn = "ATC"
@@ -22,6 +23,8 @@ calculateFixedAdherence(
 \item{atcCode}{regular expression for the class of medication ATC code (default: C09 which stands for any RAAS)}
 
 \item{refillPeriod}{length of the refill period (default 90 days)}
+
+\item{stopPeriod}{number of days after which the medication is considered to have stopped (optional)}
 
 \item{idColumn}{name of ID column: default is PATIENT}
 
