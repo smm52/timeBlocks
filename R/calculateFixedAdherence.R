@@ -235,7 +235,7 @@ calculateFixedAdherence <- function(serialDf, startDates = NA, endDates = NA, at
 calculateFixedAdherenceList <- function(serialDf, startDates = NA, endDates = NA, atcCodeList = c("C09", "C10"), refillPeriod = 90, stopPeriod = NA,
                                     idColumn = "PATIENT", dateColumn = "VISIT", atcColumn = "ATC", doPCAScore = F, combinedScore = T) {
   results <- atcCodeList %>%
-    lapply(listAllAdherences, serialDf, startDates, endDates, refillPeriod, stopPeriod, idColumn, dateColumn, atcColumn, doPCAScore = F) %>%
+    lapply(listAllAdherences, serialDf, startDates, endDates, refillPeriod, stopPeriod, idColumn, dateColumn, atcColumn) %>%
     ldply()
   
   if(doPCAScore){
@@ -283,7 +283,7 @@ calculateFixedAdherenceList <- function(serialDf, startDates = NA, endDates = NA
 listAllAdherences <- function(atcCode, serialDf, startDates, endDates, refillPeriod, stopPeriod, idColumn, dateColumn, atcColumn){
   results <- calculateFixedAdherence(serialDf = serialDf, startDates = startDates, endDates = endDates, atcCode = atcCode, 
                                      refillPeriod = refillPeriod, stopPeriod =  stopPeriod, idColumn = idColumn, dateColumn = dateColumn,
-                                     atcColumn = atcColumn) %>%
+                                     atcColumn = atcColumn, doPCAScore = F) %>%
     mutate(ATC = atcCode)
   results
   
