@@ -196,8 +196,11 @@ calculateFixedAdherence <- function(serialDf, startDates = NA, endDates = NA, at
   }
   
   if(doPCAScore){
-    scoring <- resultsDf %>% 
-      select(-ends_with('Prescription'), -ends_with('Date'), -numPrescriptions) 
+    #if there is only one prescription, we set the adherence from perfect to 0
+    scoring <- resultsDf %>%
+      mutate(adherence = ifelse(numPrescriptions == 1,0,adherence))%>% 
+      select(-ends_with('Prescription'), -ends_with('Date'), -numPrescriptions) %>%
+      mutate(gapEndFollowUpYears = gapEndFollowUpYears * -1, startStops = startStops * -1, stoppedYears = stoppedYears * -1) #all effects in the same direction
     scoring[is.na(scoring)] <- 0
     s <- prcomp(scoring %>% select(-PATIENT, -starts_with('ATC')) %>% select_if(~ length(unique(.)) > 1), center = TRUE,scale. = TRUE)
     s <- scale(s$x[,1])
@@ -239,6 +242,11 @@ calculateFixedAdherenceList <- function(serialDf, startDates = NA, endDates = NA
     ldply()
   
   if(doPCAScore){
+    #if there is only one prescription, we set the adherence from perfect to 0
+    scoring <- results %>%
+      mutate(adherence = ifelse(numPrescriptions == 1,0,adherence)) %>% 
+      select(-ends_with('Prescription'), -ends_with('Date'), -numPrescriptions) %>%
+      mutate(gapEndFollowUpYears = gapEndFollowUpYears * -1, startStops = startStops * -1, stoppedYears = stoppedYears * -1) #all effects in the same direction
     scoring <- results %>% 
       select(-ends_with('Prescription'), -ends_with('Date'), -numPrescriptions) 
     scoring <- scoring %>%
