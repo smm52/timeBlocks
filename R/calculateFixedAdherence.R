@@ -196,14 +196,14 @@ calculateFixedAdherence <- function(serialDf, startDates = NA, endDates = NA, at
   }
   
   if(doPCAScore){
-    scoring <- results %>% 
+    scoring <- resultsDf %>% 
       select(-ends_with('Prescription'), -ends_with('Date'), -numPrescriptions) 
     scoring[is.na(scoring)] <- 0
     s <- prcomp(scoring %>% select(-PATIENT, -starts_with('ATC')) %>% select_if(~ length(unique(.)) > 1), center = TRUE,scale. = TRUE)
     s <- scale(s$x[,1])
-    results <- cbind(results,s) %>%
+    resultsDf <- cbind(results,s) %>%
       as.data.frame()
-    names(results)[which(names(results) == 's')] <- 'score'
+    names(resultsDf)[which(names(resultsDf) == 's')] <- 'score'
   }
   
   resultsDf
