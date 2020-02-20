@@ -2,20 +2,26 @@
 #'
 #' @param serialDf the data frame with the serial data
 #' @param startDates dataframe with ID and a date to start the adherence calculation (optional)
+#' @param endDates dataframe with ID and a date to end the adherence calculation (optional)
 #' @param atcCode regular expression for the class of medication ATC code (default: C09 which stands for any RAAS)
 #' @param refillPeriod length of the refill period (default 90 days)
 #' @param stopPeriod number of days after which the medication is considered to have stopped (optional)
 #' @param idColumn name of ID column: default is PATIENT
 #' @param dateColumn name of date column: default is VISIT. This column has to be of class Date
 #' @param atcColumn name of the column with the ATC codes: default is ATC
+#' @param doPCAScore flag whether a PCA score from the medication data should be calculated
 #' @return time block data and dates in wide format
 #' @export
 #' @importFrom magrittr %>%
 #' @importFrom dplyr filter
 #' @importFrom dplyr mutate
+#' @importFrom dplyr select
+#' @importFrom dplyr select_if
+#' @importFrom dplyr starts_with
+#' @importFrom dplyr ends_with
 
-calculateFixedAdherence <- function(serialDf, startDates = NA, atcCode = "C09", refillPeriod = 90, stopPeriod = NA,
-                                    idColumn = "PATIENT", dateColumn = "VISIT", atcColumn = "ATC") {
+calculateFixedAdherence <- function(serialDf, startDates = NA, endDates = NA, atcCode = "C09", refillPeriod = 90, stopPeriod = NA,
+                                    idColumn = "PATIENT", dateColumn = "VISIT", atcColumn = "ATC", doPCAScore = F) {
   # check data frames
   if (nrow(serialDf) == 0 ) {
     stop("Serial prescription data is empty")
@@ -45,15 +51,40 @@ calculateFixedAdherence <- function(serialDf, startDates = NA, atcCode = "C09", 
     }
   }
   
+  #chek end date data
+  if(!is.null(nrow(endDates))){
+    endDate <- checkBaselineFormat(endDates, idColumn = idColumn, dateColumn = dateColumn)
+    if (is.null(endDate)) {
+      stop("incorrect format of end dates. Check column class. No missing values allowed.")
+    }
+  }
+  
+  
   
   # check serial prescription data
   serialDf <- checkBinaryPrescriptionFormat(serialDf, idColumn = idColumn, dateColumn = dateColumn, atcColumn = atcColumn)
   if (is.null(serialDf)) {
     stop("incorrect format of serial prescription input data. Check column class. No missing values allowed.")
   }
+  
+  # check start and end date patients are the same
+  if(!is.null(nrow(startDates)) & !is.null(nrow(endDates))){
+    if(!all(startDates$PATIENT %in% endDates$PATIENT) & !all(endDates$PATIENT %in% startDates$PATIENT)){
+      stop("start and end dates must be specified for the same patients")  
+    }  
+  }
+  
   # restrict serial data to patients in startDates (if available)
   if(!is.null(nrow(startDates))){
     serialDf <- serialDf %>% filter(PATIENT %in% startDates$PATIENT)
+    if (nrow(serialDf) == 0) {
+      stop("Serial prescription data does not contain any data for the patients.")
+    }
+  }
+  
+  # restrict serial data to patients in endDates (if available)
+  if(!is.null(nrow(endDates))){
+    serialDf <- serialDf %>% filter(PATIENT %in% endDates$PATIENT)
     if (nrow(serialDf) == 0) {
       stop("Serial prescription data does not contain any data for the patients.")
     }
@@ -94,6 +125,11 @@ calculateFixedAdherence <- function(serialDf, startDates = NA, atcCode = "C09", 
         myStartDate <- (startDates %>% filter(PATIENT == myPatient))$VISIT
         myPrescriptions <- myPrescriptions %>%
           filter(VISIT >= myStartDate)
+      }
+      if(!is.null(nrow(endDates))){
+        myEndDate <- (endDates %>% filter(PATIENT == myPatient))$VISIT
+        myPrescriptions <- myPrescriptions %>%
+          filter(VISIT <= myEndDate)
       }
     }
     #if there are 0 prescriptions, there is 0 adherence, if there is 1 prescription, the adhrence period is the refill period
@@ -150,6 +186,105 @@ calculateFixedAdherence <- function(serialDf, startDates = NA, atcCode = "C09", 
   resultsDf$firstPrescription <- as.Date(resultsDf$firstPrescription)
   resultsDf$lastPrescription <- as.Date(resultsDf$lastPrescription)
   resultsDf$lastCoverDate <- as.Date(resultsDf$lastCoverDate)
+  
+  if(!is.null(nrow(endDates))){
+    resultsDf <- resultsDf %>%
+      merge(endDates %>% select(PATIENT, VISIT))
+    resultsDf <- resultsDf %>%
+      mutate(gapEndFollowUpYears = safe.ifelse(lastCoverDate < VISIT,as.numeric(VISIT - lastCoverDate)/365.25,0)) %>%
+      select(-VISIT)
+  }
+  
+  if(doPCAScore){
+    scoring <- results %>% 
+      select(-ends_with('Prescription'), -ends_with('Date'), -numPrescriptions) 
+    scoring[is.na(scoring)] <- 0
+    s <- prcomp(scoring %>% select(-PATIENT, -starts_with('ATC')) %>% select_if(~ length(unique(.)) > 1), center = TRUE,scale. = TRUE)
+    s <- scale(s$x[,1])
+    results <- cbind(results,s) %>%
+      as.data.frame()
+    names(results)[which(names(results) == 's')] <- 'score'
+  }
+  
   resultsDf
 }
 
+#' Calculates medication adherence based on a fixed, specified refill time period
+#'
+#' @param serialDf the data frame with the serial data
+#' @param startDates dataframe with ID and a date to start the adherence calculation (optional)
+#' @param endDates dataframe with ID and a date to end the adherence calculation (optional)
+#' @param atcCode list of regular expressions for the classes of medication ATC code (default: c('C09', 'C10'))
+#' @param refillPeriod length of the refill period (default 90 days)
+#' @param stopPeriod number of days after which the medication is considered to have stopped (optional)
+#' @param idColumn name of ID column: default is PATIENT
+#' @param dateColumn name of date column: default is VISIT. This column has to be of class Date
+#' @param atcColumn name of the column with the ATC codes: default is ATC
+#' @param doPCAScore flag whether a PCA score from the medication data should be calculated
+#' @param combinedScore flag whether a combined PCA scores for all ATC codes in the list should be calculated
+#' @return time block data and dates in wide format
+#' @export
+#' @importFrom magrittr %>%
+#' @importFrom plyr ldply
+#' @importFrom tidyr pivot_wider
+#' @importFrom dplyr select
+#' @importFrom dplyr select_if
+#' @importFrom dplyr starts_with
+#' @importFrom dplyr ends_with
+
+calculateFixedAdherenceList <- function(serialDf, startDates = NA, endDates = NA, atcCodeList = c("C09", "C10"), refillPeriod = 90, stopPeriod = NA,
+                                    idColumn = "PATIENT", dateColumn = "VISIT", atcColumn = "ATC", doPCAScore = F, combinedScore = T) {
+  results <- atcCodeList %>%
+    lapply(listAllAdherences, serialDf, startDates, endDates, refillPeriod, stopPeriod, idColumn, dateColumn, atcColumn, doPCAScore = F) %>%
+    ldply()
+  
+  if(doPCAScore){
+    scoring <- results %>% 
+      select(-ends_with('Prescription'), -ends_with('Date'), -numPrescriptions) 
+    scoring <- scoring %>%
+      pivot_wider(id_cols = PATIENT, names_from = ATC, 
+                  values_from = names(scoring)[which(names(scoring) != 'PATIENT')])
+    scoring[is.na(scoring)] <- 0
+    if(combinedScore){
+      s <- prcomp(scoring %>% select(-PATIENT, -starts_with('ATC')) %>% select_if(~ length(unique(.)) > 1), center = TRUE,scale. = TRUE)
+      s <- scale(s$x[,1])
+      results <- cbind(results,s) %>%
+        as.data.frame()
+      names(results)[which(names(results) == 's')] <- 'score'
+    } else {
+      results[,'score'] <- NA
+      codes <- unique(results$ATC)
+      for(i in 1:length(codes)){
+        s <- prcomp(scoring %>% select(ends_with(paste0('_',codes[i]))) %>% select_if(~ length(unique(.)) > 1), center = TRUE,scale. = TRUE)
+        s <- scale(s$x[,1])
+        results[which(results$ATC == codes[i]),'score'] <- s
+      }
+    }
+  }
+  
+  results
+  
+}
+
+#' Helper function to call individual (one ATC code) adherence calculation for a list of ATC codes
+#'
+#' @param atcCode regular expression for the class of medication ATC code
+#' @param serialDf the data frame with the serial data
+#' @param startDates dataframe with ID and a date to start the adherence calculation (optional)
+#' @param endDates dataframe with ID and a date to end the adherence calculation (optional)
+#' @param refillPeriod length of the refill period (default 90 days)
+#' @param stopPeriod number of days after which the medication is considered to have stopped (optional)
+#' @param idColumn name of ID column: default is PATIENT
+#' @param dateColumn name of date column: default is VISIT. This column has to be of class Date
+#' @param atcColumn name of the column with the ATC codes: default is ATC
+#' @return time block data and dates in wide format
+#' @importFrom magrittr %>%
+#' @importFrom dplyr mutate
+listAllAdherences <- function(atcCode, serialDf, startDates, endDates, refillPeriod, stopPeriod, idColumn, dateColumn, atcColumn){
+  results <- calculateFixedAdherence(serialDf = serialDf, startDates = startDates, endDates = endDates, atcCode = atcCode, 
+                                     refillPeriod = refillPeriod, stopPeriod =  stopPeriod, idColumn = idColumn, dateColumn = dateColumn,
+                                     atcColumn = atcColumn) %>%
+    mutate(ATC = atcCode)
+  results
+  
+}
