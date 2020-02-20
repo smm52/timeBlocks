@@ -201,7 +201,7 @@ calculateFixedAdherence <- function(serialDf, startDates = NA, endDates = NA, at
     scoring[is.na(scoring)] <- 0
     s <- prcomp(scoring %>% select(-PATIENT, -starts_with('ATC')) %>% select_if(~ length(unique(.)) > 1), center = TRUE,scale. = TRUE)
     s <- scale(s$x[,1])
-    resultsDf <- cbind(results,s) %>%
+    resultsDf <- cbind(resultsDf,s) %>%
       as.data.frame()
     names(resultsDf)[which(names(resultsDf) == 's')] <- 'score'
   }
