@@ -206,7 +206,15 @@ calculateFixedAdherence <- function(serialDf, startDates = NA, endDates = NA, at
     s <- scale(s$x[,1])
     resultsDf <- cbind(resultsDf,s) %>%
       as.data.frame()
-    names(resultsDf)[which(names(resultsDf) == 's')] <- 'score'
+    names(resultsDf)[which(names(resultsDf) == 's')] <- 'score_all'
+    
+    #remove gap to end
+    s <- prcomp(scoring %>% select(-PATIENT, -gapEndFollowUpYears, -starts_with('ATC')) %>% select_if(~ length(unique(.)) > 1), 
+                center = TRUE,scale. = TRUE)
+    s <- scale(s$x[,1])
+    resultsDf <- cbind(resultsDf,s) %>%
+      as.data.frame()
+    names(resultsDf)[which(names(resultsDf) == 's')] <- 'score_withoutEndGap'
   }
   
   resultsDf
