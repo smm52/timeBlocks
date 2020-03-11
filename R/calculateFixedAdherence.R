@@ -304,3 +304,184 @@ listAllAdherences <- function(atcCode, serialDf, startDates, endDates, refillPer
   results
   
 }
+
+#' Calculates medication adherence between start and end dates
+#'
+#' @param serialDf the data frame with the serial data
+#' @param startDates dataframe with ID and a date to start the adherence calculation 
+#' @param endDates dataframe with ID and a date to end the adherence calculation 
+#' @param atcCode regular expression for the class of medication ATC code (default: C09 which stands for any RAAS)
+#' @param refillPeriod length of the refill period (default 90 days)
+#' @param idColumn name of ID column: default is PATIENT
+#' @param dateColumn name of date column: default is VISIT. This column has to be of class Date
+#' @param atcColumn name of the column with the ATC codes: default is ATC
+#' @return time block data and dates in wide format
+#' @export
+#' @importFrom magrittr %>%
+#' @importFrom dplyr filter
+#' @importFrom dplyr mutate
+#' @importFrom dplyr select
+#' @importFrom dplyr select_if
+#' @importFrom dplyr starts_with
+#' @importFrom dplyr ends_with
+
+calculateFixedAdherenceFixedPeriod <- function(serialDf, startDates, endDates, atcCode = "C09", refillPeriod = 90, 
+                                    idColumn = "PATIENT", dateColumn = "VISIT", atcColumn = "ATC") {
+  # check data frames
+  if (nrow(serialDf) == 0 ) {
+    stop("Serial prescription data is empty")
+  } else {
+    serialDf <- serialDf[ , colSums(is.na(serialDf)) == 0]
+    if (nrow(serialDf) == 0 ) {
+      stop("Serial prescription data is empty after removing missing data")
+    }
+  }
+  
+  # check block length
+  if (refillPeriod <= 0) {
+    stop("The refill period cannot be 0 or negative")
+  }
+  
+  # check start date data
+  if (nrow(startDates) == 0 ) {
+    stop("Start date data is empty")
+  } else {
+    startDate <- checkBaselineFormat(startDates, idColumn = idColumn, dateColumn = dateColumn)
+    if (is.null(startDate)) {
+      stop("incorrect format of start dates. Check column class. No missing values allowed.")
+    }
+  }
+  
+  #chek end date data
+  if (nrow(endDates) == 0 ) {
+    stop("End date data is empty")
+  } else {
+    endDate <- checkBaselineFormat(endDates, idColumn = idColumn, dateColumn = dateColumn)
+    if (is.null(endDate)) {
+      stop("incorrect format of end dates. Check column class. No missing values allowed.")
+    }
+  }
+  
+  # check serial prescription data
+  serialDf <- checkBinaryPrescriptionFormat(serialDf, idColumn = idColumn, dateColumn = dateColumn, atcColumn = atcColumn)
+  if (is.null(serialDf)) {
+    stop("incorrect format of serial prescription input data. Check column class. No missing values allowed.")
+  }
+  
+  # check start and end date patients are the same
+  if(!is.null(nrow(startDates)) & !is.null(nrow(endDates))){
+    if(!all(startDates$PATIENT %in% endDates$PATIENT) & !all(endDates$PATIENT %in% startDates$PATIENT)){
+      stop("start and end dates must be specified for the same patients")  
+    }  
+  }
+  
+  # restrict serial data to patients in startDates (if available)
+  if(!is.null(nrow(startDates))){
+    serialDf <- serialDf %>% filter(PATIENT %in% startDates$PATIENT)
+    if (nrow(serialDf) == 0) {
+      stop("Serial prescription data does not contain any data for the patients.")
+    }
+  }
+  
+  # restrict serial data to patients in endDates (if available)
+  if(!is.null(nrow(endDates))){
+    serialDf <- serialDf %>% filter(PATIENT %in% endDates$PATIENT)
+    if (nrow(serialDf) == 0) {
+      stop("Serial prescription data does not contain any data for the patients.")
+    }
+  }
+  
+  # restrict serial to ATC code under investigation
+  serialDf <- serialDf %>% filter(grepl(atcCode, ATC))
+  if (nrow(serialDf) == 0) { 
+    stop('Serial data contains no prescriptions with the specific ATC code expression.') 
+  }
+  
+  #if start dates are available, start looking one refill period back to see whether the patient was medicated at start
+  if(!is.null(nrow(startDates))){
+    startDates <- startDates %>%
+      mutate(VISIT = VISIT - refillPeriod)
+  }
+  
+  #create results data frame
+  resultsDf <- data.frame(PATIENT=character(),adherence=double(),firstPrescription=character(),lastPrescription=character(),
+                          lastCoverDate=character(), numPrescriptions=numeric(), startStops=numeric(), stoppedYears = double(),
+                          coveredYears = double(), stringsAsFactors = F)
+  
+  #if there are start dates, use the start date patients to iterate over to find adherence, otherwise use all patients in the prescriptions
+  if(!is.null(nrow(startDates))){
+    allPatients <- unique(startDates$PATIENT)   
+  } else {
+    allPatients <- unique(serialDf$PATIENT)  
+  }
+  #go through all patients
+  for(i in 1:length(allPatients)){
+    myPatient <- allPatients[i]
+    resultsDf[i,'PATIENT']  <- myPatient
+    myPrescriptions <- serialDf %>%
+      filter(PATIENT == myPatient)
+    #restrict prescription for this patient to start at a certain time (optional)
+    if(nrow(myPrescriptions) > 0){
+      if(!is.null(nrow(startDates))){
+        myStartDate <- (startDates %>% filter(PATIENT == myPatient))$VISIT
+        myPrescriptions <- myPrescriptions %>%
+          filter(VISIT >= myStartDate)
+      }
+      if(!is.null(nrow(endDates))){
+        myEndDate <- (endDates %>% filter(PATIENT == myPatient))$VISIT
+        myPrescriptions <- myPrescriptions %>%
+          filter(VISIT <= myEndDate)
+      }
+    }
+    #if there are 0 prescriptions, there is 0 adherence
+    if(nrow(myPrescriptions) > 0){
+      resultsDf[i,'firstPrescription'] <- as.character(as.Date(min(myPrescriptions$VISIT)))
+      resultsDf[i,'lastPrescription'] <- as.character(as.Date(max(myPrescriptions$VISIT)))
+      resultsDf[i,'lastCoverDate'] <- as.character(as.Date(max(myPrescriptions$VISIT)) + refillPeriod)
+      resultsDf[i,'numPrescriptions'] <- nrow(myPrescriptions)
+      #we need to cover from start to end dates
+      daysToCover <- as.numeric(myEndDate - myStartDate)
+      #go through the precsriptions in a sorted way starting from the earliest
+      myPrescriptions <- myPrescriptions[order(myPrescriptions$VISIT),]
+      uncoveredDays <- 0
+      #add gaps at end and start to uncovered days
+      myLastCoverDate <- as.Date(max(myPrescriptions$VISIT)) + refillPeriod 
+      if(myLastCoverDate < myEndDate){
+        uncoveredDays <- as.numeric(myEndDate - myLastCoverDate) 
+      }
+      myFirstCoverDate <- as.Date(min(myPrescriptions$VISIT))
+      if(myFirstCoverDate > myStartDate){
+        uncoveredDays <- uncoveredDays + as.numeric(myFirstCoverDate - myStartDate) 
+      }
+      for(j in 2:nrow(myPrescriptions)){
+        pOld <- myPrescriptions[(j-1),'VISIT'][[1]]
+        pNew <- myPrescriptions[j,'VISIT'][[1]]
+        if(as.numeric(pNew - pOld) > refillPeriod){
+          uncoveredDays <- uncoveredDays + as.numeric((pNew - pOld)) - refillPeriod
+        }  
+      }
+      resultsDf[i,'adherence'] <- (daysToCover - uncoveredDays)/daysToCover
+      resultsDf[i,'coveredYears'] <- (daysToCover - uncoveredDays)/365.25
+    } else if(nrow(myPrescriptions) == 0){
+      resultsDf[i,'adherence'] <- 0
+      resultsDf[i,'firstPrescription'] <- NA
+      resultsDf[i,'lastPrescription'] <- NA
+      resultsDf[i,'lastCoverDate'] <- NA
+      resultsDf[i,'numPrescriptions'] <- 0
+      resultsDf[i,'coveredYears'] <- 0
+    } 
+  }
+  resultsDf$firstPrescription <- as.Date(resultsDf$firstPrescription)
+  resultsDf$lastPrescription <- as.Date(resultsDf$lastPrescription)
+  resultsDf$lastCoverDate <- as.Date(resultsDf$lastCoverDate)
+  
+  if(!is.null(nrow(endDates))){
+    resultsDf <- resultsDf %>%
+      merge(endDates %>% select(PATIENT, VISIT))
+    resultsDf <- resultsDf %>%
+      mutate(gapEndFollowUpYears = safe.ifelse(lastCoverDate < VISIT,as.numeric(VISIT - lastCoverDate)/365.25,0)) %>%
+      select(-VISIT)
+  }
+  
+  resultsDf
+}
