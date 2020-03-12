@@ -326,7 +326,7 @@ listAllAdherences <- function(atcCode, serialDf, startDates, endDates, refillPer
 #' @importFrom dplyr ends_with
 
 calculateFixedAdherenceFixedPeriod <- function(serialDf, startDates, endDates, atcCode = "C09", refillPeriod = 90, 
-                                    idColumn = "PATIENT", dateColumn = "VISIT", atcColumn = "ATC") {
+                                               idColumn = "PATIENT", dateColumn = "VISIT", atcColumn = "ATC") {
   # check data frames
   if (nrow(serialDf) == 0 ) {
     stop("Serial prescription data is empty")
@@ -439,6 +439,8 @@ calculateFixedAdherenceFixedPeriod <- function(serialDf, startDates, endDates, a
       resultsDf[i,'lastPrescription'] <- as.character(as.Date(max(myPrescriptions$VISIT)))
       resultsDf[i,'lastCoverDate'] <- as.character(as.Date(max(myPrescriptions$VISIT)) + refillPeriod)
       resultsDf[i,'numPrescriptions'] <- nrow(myPrescriptions)
+      resultsDf[i,'startDate'] <- as.character(myStartDate)
+      resultsDf[i,'endDate'] <- as.character(myEndDate)
       #we need to cover from start to end dates
       daysToCover <- as.numeric(myEndDate - myStartDate)
       #go through the precsriptions in a sorted way starting from the earliest
@@ -453,12 +455,15 @@ calculateFixedAdherenceFixedPeriod <- function(serialDf, startDates, endDates, a
       if(myFirstCoverDate > myStartDate){
         uncoveredDays <- uncoveredDays + as.numeric(myFirstCoverDate - myStartDate) 
       }
-      for(j in 2:nrow(myPrescriptions)){
-        pOld <- myPrescriptions[(j-1),'VISIT'][[1]]
-        pNew <- myPrescriptions[j,'VISIT'][[1]]
-        if(as.numeric(pNew - pOld) > refillPeriod){
-          uncoveredDays <- uncoveredDays + as.numeric((pNew - pOld)) - refillPeriod
-        }  
+      #if we only have one prescription, there is nothing more to do
+      if(nrow(myPrescriptions) > 1){
+        for(j in 2:nrow(myPrescriptions)){
+          pOld <- myPrescriptions[(j-1),'VISIT'][[1]]
+          pNew <- myPrescriptions[j,'VISIT'][[1]]  
+          if(as.numeric(pNew - pOld) > refillPeriod){
+            uncoveredDays <- uncoveredDays + as.numeric((pNew - pOld)) - refillPeriod
+          }  
+        }
       }
       resultsDf[i,'adherence'] <- (daysToCover - uncoveredDays)/daysToCover
       resultsDf[i,'coveredYears'] <- (daysToCover - uncoveredDays)/365.25
@@ -474,6 +479,8 @@ calculateFixedAdherenceFixedPeriod <- function(serialDf, startDates, endDates, a
   resultsDf$firstPrescription <- as.Date(resultsDf$firstPrescription)
   resultsDf$lastPrescription <- as.Date(resultsDf$lastPrescription)
   resultsDf$lastCoverDate <- as.Date(resultsDf$lastCoverDate)
+  resultsDf$startDate <- as.Date(resultsDf$startDate)
+  resultsDf$endDate <- as.Date(resultsDf$endDate)
   
   if(!is.null(nrow(endDates))){
     resultsDf <- resultsDf %>%
