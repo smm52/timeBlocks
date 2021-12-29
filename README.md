@@ -1,7 +1,7 @@
 Overview
 --------
 
-This package creates time blocks out of serial data
+This package creates time blocks out of serial data and calculates adherences based on pthe proprortion of days covered methods
 
 Installation
 ------------

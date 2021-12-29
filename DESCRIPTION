@@ -1,7 +1,7 @@
 Package: timeBlocks
 Type: Package
 Title: Converts Serial Measurement Data into Longitudinal Trajectory of Equally-sized Time Blocks
-Version: 0.1.6
+Version: 0.2.0
 Authors@R: person("Stefan", "Mutter", email = "stefan.mutter@gmail.com",
                   role = c("aut", "cre"))
 Description: More about what it does (maybe more than one line)
@@ -12,9 +12,11 @@ Imports:
   magrittr (>= 1.5),
   plyr (>= 1.8.4),
   readr (>= 1.1.1),
-  tidyr (>= 1.0.0),
+  tidyr (>= 1.1.0),
   lubridate (>= 1.7.2),
-  ggplot2
+  ggplot2 (>= 3.3.3),
+  tibble (>= 3.0.3),
+  gridExtra (>= 2.3)
 License: CC-BY-SA-4.0
 Encoding: UTF-8
 LazyData: true
