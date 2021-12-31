@@ -373,7 +373,7 @@ doInterpolate <- function(dataDF, dateDF, timeframe, baselineDate) {
 #' @importFrom dplyr select
 #' @importFrom dplyr mutate_at
 #' @importFrom dplyr starts_with
-#' @importFrom plyr arrange
+#' @importFrom dplyr arrange
 #' @importFrom lubridate ymd
 #' @importFrom magrittr %>%
 makeLong <- function(df, dataName, idColumn) {
