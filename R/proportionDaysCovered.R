@@ -9,6 +9,7 @@
 #' @param dateColumn name of date column: default is VISIT. This column has to be of class Date
 #' @param atcColumn name of the column with the ATC codes: default is ATC
 #' @param treatmentBreakDays a vector containing the number of days (one entry for each drug class) after which the treatment is considered discontinued (default: no breaks applied)
+#' @param hospitalDays a data frame containing start dates and end dates of hospitalisations for each patient. Time in hospital will be removed from the calculation. The first day in hospital should be stored in a column called START and the final in one called END. (optional)
 #' @param createGraphs flag indicating whether graphs should be produced (default: FALSE)
 #' @return adherence rates for the full prescription period and between start and end dates
 #' @export
@@ -47,8 +48,8 @@
 #'                           treatmentBreakDays = c(181,181))
 #' }
 pdc_treatment <- function(serialDf, startDates, endDates, atcCode = c(), refillPeriod = 90, 
-                          idColumn = "PATIENT", dateColumn = "VISIT", atcColumn = "ATC", treatmentBreakDays = c(),
-                          createGraphs = F) {
+                          idColumn = "PATIENT", dateColumn = "VISIT", atcColumn = "ATC", 
+                          treatmentBreakDays = c(), hospitalDays = NULL, createGraphs = F) {
   # check data frames
   if (nrow(serialDf) == 0 ) {
     stop("Serial prescription data is empty")
@@ -120,6 +121,29 @@ pdc_treatment <- function(serialDf, startDates, endDates, atcCode = c(), refillP
     stop("Serial prescription data does not contain any data for the patients.")
   }
   
+  # check hospital data
+  if(!is.null(hospitalDays)){
+    if(nrow(hospitalDays) == 0){
+      stop("Hospital data is empty.")
+    }
+    if(length(which(names(hospitalDays) == idColumn)) == 0) {
+      stop("incorrect ID in hospital date")
+    }
+    names(hospitalDays)[which(names(hospitalDays) == idColumn)] <- "PATIENT"
+    if(!any(c('START', 'END') %in% names(hospitalDays))){
+      stop("The first day of a hospital stay should be in a column called START and the final in one called END.")
+    }
+    if(!(class(hospitalDays$START) == 'Date' & class(hospitalDays$END) == 'Date')){
+      stop("The columns START and END have to be of class Date.")
+    }
+    # remove patients not in startDates from hospital
+    hospitalDays <- hospitalDays %>%
+      filter(PATIENT %in% startDates$PATIENT)
+    if(nrow(hospitalDays) == 0){
+      stop("Hospital data is empty for patients in start dates.")
+    }
+  }
+  
   # check that list of ATC codes is not emtpy
   if(length(atcCode) == 0){
     stop("List of ATC codes missing.")
@@ -177,6 +201,18 @@ pdc_treatment <- function(serialDf, startDates, endDates, atcCode = c(), refillP
   endDates <- endDates %>%
     mutate(DAYS = interval(firstPrescription,VISIT)/days(1))
   
+  # remove hospital time before first and after last prescription and change the presentation to days after first prescription
+  if(!is.null(hospitalDays)){
+    hospitalDays <- hospitalDays %>%
+      filter(END > firstPrescription) %>%
+      filter(START < (lastPrescription + refillPeriod)) %>%
+      filter(END > START) %>%
+      mutate(START = safe.ifelse(START < firstPrescription, firstPrescription, START)) %>%
+      mutate(END = safe.ifelse(END > (lastPrescription + refillPeriod), (lastPrescription + refillPeriod), END)) %>%
+      mutate(START_DAYS = interval(firstPrescription,START)/days(1)) %>%
+      mutate(END_DAYS = interval(firstPrescription,END)/days(1))
+  }
+  
   #create results matrix
   allPatients <- unique(startDates$PATIENT) 
   myRowNames <- paste0(rep(allPatients,each = length(atcCode)), '_', seq(1:length(atcCode)))
@@ -191,9 +227,6 @@ pdc_treatment <- function(serialDf, startDates, endDates, atcCode = c(), refillP
     myData <- treatmentRegimes[[i]] %>%
       as.matrix()
     oldPatient <- ''
-    myBreak <- treatmentBreakDays[i]
-    treatmentStart <- daysBetweenFirstLast + 2
-    treatmentEnd <- 1
     colEnd_corrected <- 1
     oldRowNumber <- ''
     for(j in 1:nrow(myData)){
@@ -223,14 +256,22 @@ pdc_treatment <- function(serialDf, startDates, endDates, atcCode = c(), refillP
     }
   }
   
+  myRownames <- rownames(treatmentTable)
   #fill in breaks and uncovered days
   print('------------------------------fill in uncovered and break days')
-  myRownames <- rownames(treatmentTable)
   treatmentTable <- apply(as.matrix(rownames(treatmentTable)),1,addUncovered,treatmentTable, treatmentBreakDays) %>%
     t()
   rownames(treatmentTable) <- myRownames
   
   #fill in hospital days
+  if(!is.null(hospitalDays)){
+    print('------------------------------fill in hospital days')
+    if(nrow(hospitalDays) > 0){
+      treatmentTable <- apply(as.matrix(rownames(treatmentTable)),1,addHospital,treatmentTable, hospitalDays) %>%
+        t()  
+      rownames(treatmentTable) <- myRownames
+    } 
+  }
   
   #calculate adherence
   print('----------------------calculate adherences')
@@ -255,12 +296,20 @@ pdc_treatment <- function(serialDf, startDates, endDates, atcCode = c(), refillP
     myPlots <- list()
     plotsPerPage <- 20
     pagesNeeded <- ceiling(length(allPatientsWithAdherence)/plotsPerPage)
+    myLabels <- c('no', 'yes')
+    myLevels <- c(0,1)
+    myColours <- c("#999999", "#E69F00")
+    if(any(treatmentTable == 2)){
+      myLevels <- c(0,1,2)  
+      myLabels <- c('no', 'yes', 'hospital')
+      myColours <- c("#999999", "#E69F00", "#CC79A7")
+    }
     pdf('treatmentGraphs.pdf', width=21, height=27)
     for(n in 1:length(allPatientsWithAdherence)){
       patientTreatments <- treatmentTable %>%
         filter(PATIENT == allPatientsWithAdherence[n]) %>% 
         filter(!is.na(covered)) %>%
-        mutate(covered = factor(covered, levels = c(0,1), labels = c('no', 'yes')))
+        mutate(covered = factor(covered, levels = myLevels, labels = myLabels))
       patientStart <- startDates[which(startDates$PATIENT == allPatientsWithAdherence[n]),'VISIT'][[1]]
       patientEnd <- endDates[which(endDates$PATIENT == allPatientsWithAdherence[n]),'VISIT'][[1]]
       myXmin <- min(min(patientTreatments$dateDay), patientStart)
@@ -274,14 +323,14 @@ pdc_treatment <- function(serialDf, startDates, endDates, atcCode = c(), refillP
           filter(treatmentCode == 1 & PATIENT == allPatientsWithAdherence[n])  
       }
       myPlots[[l]] <- ggplot(patientTreatments, aes(dateDay, treatmentCode, colour = covered)) + 
-        geom_point(shape = 15) +
+        geom_point(shape = 15, size = 0.1) +
         geom_vline(xintercept = patientStart, linetype = 'dotdash') +
         geom_vline(xintercept = patientEnd, linetype = 'dotdash') +
         ggtitle(paste0('Adherences for ', allPatientsWithAdherence[n],'\n full-time adherence ', fa[1,'adherenceFullTime'],
                        '% \n start to end adherence ', fa[1,'adherenceStartToEnd'], '%')) +
         xlab('timeline') +
         scale_y_discrete(name = 'treatment', labels = atcCode) +
-        scale_color_manual(values = c("#999999", "#E69F00"), drop = F) +
+        scale_color_manual(values = myColours, drop = F) +
         scale_x_date(date_minor_breaks = "1 year", date_labels = "%Y", limits = c(myXmin - 10,myXmax + 10)) +
         theme_classic() +
         theme(plot.title = element_text(size=18, face="bold"), axis.text = element_text(size = 12)) 
@@ -356,6 +405,52 @@ addUncovered <- function(treatmentName, treatmentTable, myBreakDays){
   treatmentRow
 }
 
+#' Adds hospital days
+#'
+#' @param treatmentName the row ID that defines the patient and drug class
+#' @param treatmentTable the complete treatment table
+#' @param myHospitalDays the hospital days for all patients
+#' @return hopsital days added to the treatment table
+addHospital <- function(treatmentName, treatmentTable, myHospitalDays){
+  treatmentRow <- treatmentTable[treatmentName,]
+  
+  #skip unmedicated
+  if(length(which(!is.na(treatmentRow))) > 0){
+    myPatient <- sub("_.*", "", treatmentName)
+    
+    #skip if patient has never been hospital
+    myHospital <- myHospitalDays %>%
+      filter(PATIENT == myPatient)
+    if(nrow(myHospital) > 0){
+      treatmentStart <- min(which(treatmentRow == 1))
+      treatmentEnd <- max(which(treatmentRow >= 1))
+      #do nothing if hospital event is completely before start or after end
+      for(i in 1:nrow(myHospital)){
+        hospStart <- myHospital[i,'START_DAYS'][[1]] - 1
+        hospEnd <- myHospital[i,'END_DAYS'][[1]] - 1
+        if(hospEnd >= treatmentStart & treatmentEnd >= hospStart){
+          keepHospitalsRemoved <- treatmentRow
+          #just a pre-caution in case some hospital days overlap and the sum would not work
+          keepHospitalsRemoved[which(keepHospitalsRemoved == 2)] <- NA
+          #number of 1s that need to be moved
+          coveredHospitalDays <- sum(keepHospitalsRemoved[seq(hospStart,hospEnd)], na.rm = T)
+          #set all hospital days to 2
+          treatmentRow[seq(hospStart,hospEnd)] <- 2
+          #move the 1s to the next possible position
+          if(coveredHospitalDays > 0){
+            availableDays <- treatmentRow[seq(hospEnd + 1, length(treatmentRow))] 
+            availableDays <- availableDays[which(is.na(availableDays) | availableDays == 0)] 
+            coveredHospitalDays <- min(coveredHospitalDays, length(availableDays))
+            availableDays <- availableDays[seq(1,coveredHospitalDays)]
+            treatmentRow[which(names(treatmentRow) %in% names(availableDays))] <- 1
+          }
+        }
+      }
+    }
+  }
+  treatmentRow
+}
+
 #' Controls the adherence calculation for the whole treatment table
 #'
 #' @param treatmentTable the complete treatment table matrix
@@ -388,6 +483,8 @@ calculateMedicationSpecificAdherence <- function(treatmentRowNames, treatment, s
   result[1,'PATIENT'] <- myPatient
   result[1,'treatmentCode'] <- myTreatmentRegime
   treatmentRow <- treatment[treatmentRowNames,]
+  #ignore hospital days to calculate the adherence
+  treatmentRow[which(treatmentRow == 2)] <- NA
   myStart <- startDates[which(startDates$PATIENT == sub("_.*", "", treatmentRowNames)),'DAYS'][[1]]
   myEnd <- endDates[which(endDates$PATIENT == sub("_.*", "", treatmentRowNames)),'DAYS'][[1]]
   
@@ -429,9 +526,11 @@ calculateMedicationSpecificAdherence <- function(treatmentRowNames, treatment, s
 
 #' Combine the information from all drug classes into one row (logical AND)
 #'
-#' @param myValue 0, 1 or NA from different drug classes on the same date
+#' @param myValue 0, 1, 2 or NA from different drug classes on the same date
 #' @return combined row
 combineRows <- function(myValues){
+  #if the value is 2 from hospitalizations, ignore (e.g. set to NA)
+  myValues[which(!myValues %in% c(0,1))] <- NA
   newValue <- NA
   if(any(!is.na(myValues))){
     if(length(which(myValues == 0)) > 0){
