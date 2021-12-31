@@ -14,6 +14,7 @@ pdc_treatment(
   dateColumn = "VISIT",
   atcColumn = "ATC",
   treatmentBreakDays = c(),
+  hospitalDays = NULL,
   createGraphs = F
 )
 }
@@ -35,6 +36,8 @@ pdc_treatment(
 \item{atcColumn}{name of the column with the ATC codes: default is ATC}
 
 \item{treatmentBreakDays}{a vector containing the number of days (one entry for each drug class) after which the treatment is considered discontinued (default: no breaks applied)}
+
+\item{hospitalDays}{a data frame containing start dates and end dates of hospitalisations for each patient. Time in hospital will be removed from the calculation. The first day in hospital should be stored in a column called START and the final in one called END. (optional)}
 
 \item{createGraphs}{flag indicating whether graphs should be produced (default: FALSE)}
 }

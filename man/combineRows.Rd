@@ -7,7 +7,7 @@
 combineRows(myValues)
 }
 \arguments{
-\item{myValue}{0, 1 or NA from different drug classes on the same date}
+\item{myValue}{0, 1, 2 or NA from different drug classes on the same date}
 }
 \value{
 combined row
