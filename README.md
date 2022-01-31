@@ -1,3 +1,6 @@
+<!-- badges: start -->
+use_last_change_badge()
+<!-- badges: end -->
 Overview
 --------
 
