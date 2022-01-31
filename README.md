@@ -1,5 +1,5 @@
 <!-- badges: start -->
-use_last_change_badge()
+use_badge(name = "last_change")
 <!-- badges: end -->
 Overview
 --------
