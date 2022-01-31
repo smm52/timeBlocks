@@ -1,6 +1,3 @@
-<!-- badges: start -->
-use_badge(name = "last_change")
-<!-- badges: end -->
 Overview
 --------
 
