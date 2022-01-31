@@ -14,7 +14,7 @@ pdc_treatment(
   dateColumn = "VISIT",
   atcColumn = "ATC",
   treatmentBreakDays = c(),
-  hospitalDays = NULL,
+  absenceDays = NULL,
   createGraphs = F
 )
 }
@@ -37,7 +37,7 @@ pdc_treatment(
 
 \item{treatmentBreakDays}{a vector containing the number of days (one entry for each drug class) after which the treatment is considered discontinued (default: no breaks applied)}
 
-\item{hospitalDays}{a data frame containing start dates and end dates of hospitalisations for each patient. Time in hospital will be removed from the calculation. The first day in hospital should be stored in a column called START and the final in one called END. (optional)}
+\item{absenceDays}{a data frame containing start dates and end dates of absences for each patient. This time will be removed from the calculation. The first day should be stored in a column called START and the final in one called END. (optional)}
 
 \item{createGraphs}{flag indicating whether graphs should be produced (default: FALSE)}
 }
@@ -61,6 +61,6 @@ Calculates adherence to drug treatments based on the proportion of days covered 
  
  adherences <- pdc_treatment(serialDf = kela, startDates = dfStart, endDates = dfEnd, atcCode = c('^C09', '^C10'), refillPeriod = 90, 
                           idColumn = "PATIENT", dateColumn = "VISIT", atcColumn = "ATC", createGraphs = T, 
-                          treatmentBreakDays = c(181,181))
+                          treatmentBreakDays = c(181,181), absenceDays = NULL)
 }
 }
