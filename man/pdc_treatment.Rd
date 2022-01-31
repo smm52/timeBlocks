@@ -15,7 +15,8 @@ pdc_treatment(
   atcColumn = "ATC",
   treatmentBreakDays = c(),
   absenceDays = NULL,
-  createGraphs = F
+  createGraphs = F,
+  savePrescriptionTable = F
 )
 }
 \arguments{
@@ -40,6 +41,8 @@ pdc_treatment(
 \item{absenceDays}{a data frame containing start dates and end dates of absences for each patient. This time will be removed from the calculation. The first day should be stored in a column called START and the final in one called END. (optional)}
 
 \item{createGraphs}{flag indicating whether graphs should be produced (default: FALSE)}
+
+\item{savePrescriptionTable}{flag indicating whether the whole prescription table should be saved in a file (default: FALSE)}
 }
 \value{
 adherence rates for the full prescription period and between start and end dates

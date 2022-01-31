@@ -11,6 +11,7 @@
 #' @param treatmentBreakDays a vector containing the number of days (one entry for each drug class) after which the treatment is considered discontinued (default: no breaks applied)
 #' @param absenceDays a data frame containing start dates and end dates of absences for each patient. This time will be removed from the calculation. The first day should be stored in a column called START and the final in one called END. (optional)
 #' @param createGraphs flag indicating whether graphs should be produced (default: FALSE)
+#' @param savePrescriptionTable flag indicating whether the whole prescription table should be saved in a file (default: FALSE)
 #' @return adherence rates for the full prescription period and between start and end dates
 #' @export
 #' @importFrom magrittr %>%
@@ -19,6 +20,7 @@
 #' @importFrom dplyr select
 #' @importFrom dplyr arrange
 #' @importFrom dplyr rowwise
+#' @importFrom dplyr bind_rows
 #' @importFrom lubridate interval
 #' @importFrom lubridate days
 #' @importFrom tidyr pivot_longer
@@ -51,7 +53,7 @@
 #' }
 pdc_treatment <- function(serialDf, startDates, endDates, atcCode = c(), refillPeriod = 90, 
                           idColumn = "PATIENT", dateColumn = "VISIT", atcColumn = "ATC", 
-                          treatmentBreakDays = c(), absenceDays = NULL, createGraphs = F) {
+                          treatmentBreakDays = c(), absenceDays = NULL, createGraphs = F, savePrescriptionTable = F) {
   # check data frames
   if (nrow(serialDf) == 0 ) {
     stop("Serial prescription data is empty")
@@ -284,51 +286,6 @@ pdc_treatment <- function(serialDf, startDates, endDates, atcCode = c(), refillP
           unmedicated <- which(is.na(treatmentTable[myID,paste(inBetween)]))  
           treatmentTable[myID,unmedicated] <- 0
         }
-        
-        #fill in absence days
-        if(!is.null(absenceDays)){
-          #check again as potentially all absence dates might have been outside the prescription time
-          if(nrow(absenceDays) > 0){
-            myDays <- absenceDays %>%
-              filter(PATIENT == gsub("_.*","",myID)) %>%
-              dplyr::arrange(START_DAY)
-            if(nrow(myDays) > 0){
-              for(m in 1:nrow(myDays)){
-                tryCatch({
-                  theseDays <- myDays[m,]
-                  if(theseDays$START_DAY <= myEnd & theseDays$END_DAY >= myStart){
-                    thisPeriod <- seq(from = theseDays$START_DAY, length.out = theseDays$END_DAY - theseDays$START_DAY + 1)
-                    #check if some of the days have already been covered, add more extra days after the absence stay
-                    extraDays <- sum(treatmentTable[myID,paste(thisPeriod)], na.rm = T)
-                    #check that absence data does not overlap
-                    if(length(which(treatmentTable[myID,paste(thisPeriod)] == 2)) > 0){
-                      stop(paste('overlapping absence periods for ID ', gsub("_.*","",myID), '. No absences added for this ID.'))
-                    }
-                    #put the current period in the treatment table
-                    treatmentTable[myID, paste(thisPeriod)] <- 2 #set to 2 to differentiate from NA days in the plotting, for adherence calc. needs to be NA again  
-                    while(extraDays > 0){
-                      newStart <-max(thisPeriod) + 1
-                      thisPeriod <- seq(from = newStart, length.out = extraDays)
-                      #if extra days go beyond or reach the end of the prescription period end 
-                      if(max(thisPeriod) >= max(myColNames)){
-                        extraDays <- 0
-                        if(newStart <= max(myColNames)){
-                          thisPeriod <- seq(from = newStart, to = max(myColNames)) 
-                          treatmentTable[myID, paste(thisPeriod)] <- 1
-                        }
-                      } else {
-                        extraDays <-sum(treatmentTable[myID,paste(thisPeriod)], na.rm = T)   
-                        treatmentTable[myID, paste(thisPeriod)] <- 1
-                      }
-                    }
-                  }
-                }, error = function(e){
-                  print(paste("ERROR :",conditionMessage(e)))
-                })
-              }
-            }
-          }
-        }
 
         #fill in absence days
         if(!is.null(absenceDays)){
@@ -378,7 +335,10 @@ pdc_treatment <- function(serialDf, startDates, endDates, atcCode = c(), refillP
     }
   }
   #save treatment table
-  write.csv(treatmentTable, file = 'treatmentTable.txt', sep = '\t')
+  if(savePrescriptionTable){
+    print('----------------------saving prescription table')
+    write.csv(treatmentTable, file = 'prescriptionTable.csv')  
+  }
   
   #calculate adherence
   print('----------------------calculate adherences for individual medications')
