@@ -1,7 +1,7 @@
 Package: timeBlocks
 Type: Package
 Title: Converts Serial Measurement Data into Longitudinal Trajectory of Equally-sized Time Blocks
-Version: 0.2.3
+Version: 0.2.4
 Authors@R: person("Stefan", "Mutter", email = "stefan.mutter@gmail.com",
                   role = c("aut", "cre"))
 Description: More about what it does (maybe more than one line)

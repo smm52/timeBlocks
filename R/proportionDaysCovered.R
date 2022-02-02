@@ -225,7 +225,7 @@ pdc_treatment <- function(serialDf, startDates, endDates, atcCode = c(), refillP
   myColNames <- c(0,seq(1:(daysBetweenFirstLast - 1)))
   treatmentTable <- matrix(NA, nrow = length(myRowNames), ncol = length(myColNames), dimnames = list(myRowNames, myColNames))
   
-  print('----------------------creating individual treatment table')
+  print(paste0('----------------------creating individual treatment table (started: ',Sys.time(),')'))
   # fill in
   #go through all treatment regimes
   for(i in 1:length(treatmentRegimes)){
@@ -336,23 +336,23 @@ pdc_treatment <- function(serialDf, startDates, endDates, atcCode = c(), refillP
   }
   #save treatment table
   if(savePrescriptionTable){
-    print('----------------------saving prescription table')
+    print(paste0('----------------------saving prescription table (started: ',Sys.time(),')'))
     write.csv(treatmentTable, file = 'prescriptionTable.csv')  
   }
   
   #calculate adherence
-  print('----------------------calculate adherences for individual medications')
+  print(paste0('----------------------calculate adherences for individual medications (started: ',Sys.time(),')'))
   myResults <- calculateAdherences(treatmentTable, startDates, endDates, refillPeriod)
   if(length(atcCode) > 1){
-    print('----------------------calculate adherences for full treatment')
+    print(paste0('----------------------calculate adherences for full treatment (started: ',Sys.time(),')'))
     #combine rows for each patient ID with treatment code 0
-    for(i in 1:length(allPatients)){
-      newRow <- apply(treatmentTable[which(grepl(allPatients[i],rownames(treatmentTable))),],2,combineRows)
-      treatmentTable <- rbind(treatmentTable, newRow)
-      rownames(treatmentTable)[which(rownames(treatmentTable) == 'newRow')] <- paste0(allPatients[i],'_0')
-    }
+    newRows <- lapply(allPatients,function(x,y){apply(y[which(grepl(x,rownames(y))),],2,combineRows)}, treatmentTable) 
+    newRows <- matrix(unlist(newRows), ncol = ncol(treatmentTable), nrow = length(allPatients), 
+                      dimnames = list(paste0(allPatients,'_0'),colnames(treatmentTable)))
+    treatmentTable <- rbind(treatmentTable, newRows)
     myResultsTreatment <- calculateAdherences(treatmentTable[which(grepl('_0$',rownames(treatmentTable))),], 
                                               startDates, endDates, refillPeriod)
+    print(paste0('------------------------------------combine calculations (started: ',Sys.time(),')'))
     myResults <- bind_rows(myResults, myResultsTreatment) %>%
       dplyr::arrange(PATIENT, treatmentCode) %>%
       mutate(treatmentCode = as.numeric(treatmentCode)) %>%
@@ -362,7 +362,7 @@ pdc_treatment <- function(serialDf, startDates, endDates, atcCode = c(), refillP
   
   #create graphs
   if(createGraphs){
-    print('----------------------create graphs')
+    print(paste0('----------------------create graphs (started: ',Sys.time(),')'))
     allPatientsWithAdherence <- unique((myResults %>% filter(!is.na(adherenceFullTime)))$PATIENT)
     treatmentTable <- treatmentTable %>%
       as.data.frame() %>%
@@ -434,8 +434,6 @@ pdc_treatment <- function(serialDf, startDates, endDates, atcCode = c(), refillP
   
   myResults
 }
-
-
 
 #' Controls the adherence calculation for the whole treatment table
 #'
