@@ -353,12 +353,13 @@ pdc_treatment <- function(serialDf, startDates, endDates, atcCode = c(), refillP
     myResultsTreatment <- calculateAdherences(treatmentTable[which(grepl('_0$',rownames(treatmentTable))),], 
                                               startDates, endDates, refillPeriod)
     print(paste0('------------------------------------combine calculations (started: ',Sys.time(),')'))
-    myResults <- bind_rows(myResults, myResultsTreatment) %>%
-      dplyr::arrange(PATIENT, treatmentCode) %>%
-      mutate(treatmentCode = as.numeric(treatmentCode)) %>%
-      rowwise() %>%
-      mutate(treatment = ifelse(treatmentCode == 0,'polyPharmacy',atcCode[treatmentCode]))
+    myResults <- bind_rows(myResults, myResultsTreatment)
   }
+  myResults <- myResults %>%
+    dplyr::arrange(PATIENT, treatmentCode) %>%
+    mutate(treatmentCode = as.numeric(treatmentCode)) %>%
+    rowwise() %>%
+    mutate(treatment = ifelse(treatmentCode == 0,'polyPharmacy',atcCode[treatmentCode]))
   
   #create graphs
   if(createGraphs){
@@ -400,7 +401,7 @@ pdc_treatment <- function(serialDf, startDates, endDates, atcCode = c(), refillP
       fa <- NA
       if(length(atcCode) > 1){
         fa <- myResults %>%
-          filter(treatmentCode == 'treatment' & PATIENT == allPatientsWithAdherence[n])
+          filter(treatmentCode == 0 & PATIENT == allPatientsWithAdherence[n])
       } else {
         fa <- myResults %>%
           filter(treatmentCode == 1 & PATIENT == allPatientsWithAdherence[n])  
@@ -410,7 +411,7 @@ pdc_treatment <- function(serialDf, startDates, endDates, atcCode = c(), refillP
         geom_vline(xintercept = patientStart, linetype = 'dotdash') +
         geom_vline(xintercept = patientEnd, linetype = 'dotdash') +
         ggtitle(paste0('Adherences for ', allPatientsWithAdherence[n],'\n full-time adherence ', fa[1,'adherenceFullTime'],
-                       '% \n start to end adherence ', fa[1,'adherenceStartToEnd'], '%')) +
+                       '% \n start to end adherence ', fa[1,'adherenceStartEnd'], '%')) +
         xlab('timeline') +
         scale_y_discrete(name = 'treatment', labels = atcCode) +
         scale_color_manual(values = myColours, drop = F) +
