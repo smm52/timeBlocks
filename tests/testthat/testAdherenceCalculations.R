@@ -115,4 +115,20 @@ test_that("polypharmacy with breaks and absences", {
   expect_equal((res %>% filter(PATIENT == 8 & treatment == 'polyPharmacy'))$treatmentDaysStartEnd,16) 
 })
 
+test_that("polypharmacy some individuals with breaks and absences", {
+  
+  res <- pdc_treatment(serialDf = meds %>% filter(PATIENT %in% c(4,8)),
+                       startDates = starts  %>% filter(PATIENT %in% c(4,8)), 
+                       endDates = ends  %>% filter(PATIENT %in% c(4,8)), 
+                       atcCode = c('C09','C10'), 
+                       refillPeriod = 3,
+                       treatmentBreakDays = c(2,2), 
+                       absenceDays = abs)
+  
+  expect_equal((res %>% filter(PATIENT == 4 & treatment == 'polyPharmacy'))$adherenceFullTime,100) 
+  expect_equal((res %>% filter(PATIENT == 4 & treatment == 'polyPharmacy'))$adherenceStartEnd,100) 
+  expect_equal((res %>% filter(PATIENT == 8 & treatment == 'polyPharmacy'))$adherenceFullTime,round(100 * 11/16, 2)) 
+  expect_equal((res %>% filter(PATIENT == 8 & treatment == 'polyPharmacy'))$adherenceStartEnd,round(100 * 11/16, 2)) 
+})
+
 

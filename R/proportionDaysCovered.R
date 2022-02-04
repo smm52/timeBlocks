@@ -25,6 +25,7 @@
 #' @importFrom lubridate days
 #' @importFrom tidyr pivot_longer
 #' @importFrom gridExtra grid.arrange
+#' @importFrom tibble rownames_to_column
 #' @importFrom ggplot2 ggplot
 #' @importFrom ggplot2 geom_point
 #' @importFrom ggplot2 geom_vline
@@ -35,6 +36,7 @@
 #' @importFrom ggplot2 scale_x_date
 #' @importFrom ggplot2 theme_classic
 #' @importFrom ggplot2 theme
+#' @importFrom ggplot2 element_text
 #' @examples
 #' \dontrun{
 #'  dfStart <- read_tsv('/home/ad/home/s/stefmutt/projects/former/cadGRS/data/bl_all_new.txt') %>%
@@ -346,9 +348,11 @@ pdc_treatment <- function(serialDf, startDates, endDates, atcCode = c(), refillP
   if(length(atcCode) > 1){
     print(paste0('----------------------calculate adherences for full treatment (started: ',Sys.time(),')'))
     #combine rows for each patient ID with treatment code 0
-    newRows <- lapply(allPatients,function(x,y){apply(y[which(grepl(x,rownames(y))),],2,combineRows)}, treatmentTable) 
-    newRows <- matrix(unlist(newRows), ncol = ncol(treatmentTable), nrow = length(allPatients), 
-                      dimnames = list(paste0(allPatients,'_0'),colnames(treatmentTable)))
+    patientList <- unique(gsub("_.*","",rownames(treatmentTable)))
+    newRows <- lapply(patientList,
+                      function(x,y){apply(y[which(grepl(x,rownames(y))),],2,combineRows)}, treatmentTable) 
+    newRows <- matrix(unlist(newRows), ncol = ncol(treatmentTable), nrow = length(patientList), 
+                      dimnames = list(paste0(patientList,'_0'),colnames(treatmentTable)), byrow = T)
     treatmentTable <- rbind(treatmentTable, newRows)
     myResultsTreatment <- calculateAdherences(treatmentTable[which(grepl('_0$',rownames(treatmentTable))),], 
                                               startDates, endDates, refillPeriod)
@@ -383,11 +387,12 @@ pdc_treatment <- function(serialDf, startDates, endDates, atcCode = c(), refillP
     myLabels <- c('no', 'yes')
     myLevels <- c(0,1)
     myColours <- c("#999999", "#E69F00")
-    if(any(treatmentTable == 2)){
+    if(nrow(treatmentTable %>% filter(covered == 2)) > 0){
       myLevels <- c(0,1,2)  
       myLabels <- c('no', 'yes', 'absence')
       myColours <- c("#999999", "#E69F00", "#CC79A7")
     }
+    mySize <- round(-0.19 * (daysBetweenFirstLast/365.25) + 4, 1)
     pdf('treatmentGraphs.pdf', width=21, height=27)
     for(n in 1:length(allPatientsWithAdherence)){
       patientTreatments <- treatmentTable %>%
@@ -402,18 +407,20 @@ pdc_treatment <- function(serialDf, startDates, endDates, atcCode = c(), refillP
       if(length(atcCode) > 1){
         fa <- myResults %>%
           filter(treatmentCode == 0 & PATIENT == allPatientsWithAdherence[n])
+        atcLabels <- c('poly pharma',atcCode)
       } else {
         fa <- myResults %>%
           filter(treatmentCode == 1 & PATIENT == allPatientsWithAdherence[n])  
+        atcLabels <- atcCode
       }
       myPlots[[l]] <- ggplot(patientTreatments, aes(dateDay, treatmentCode, colour = covered)) + 
-        geom_point(shape = 15, size = 0.1) +
+        geom_point(shape = 15, size = mySize) +
         geom_vline(xintercept = patientStart, linetype = 'dotdash') +
         geom_vline(xintercept = patientEnd, linetype = 'dotdash') +
-        ggtitle(paste0('Adherences for ', allPatientsWithAdherence[n],'\n full-time adherence ', fa[1,'adherenceFullTime'],
+        ggtitle(paste0(allPatientsWithAdherence[n],'\n full-time adherence ', fa[1,'adherenceFullTime'],
                        '% \n start to end adherence ', fa[1,'adherenceStartEnd'], '%')) +
         xlab('timeline') +
-        scale_y_discrete(name = 'treatment', labels = atcCode) +
+        scale_y_discrete(name = 'treatment', labels = atcLabels) +
         scale_color_manual(values = myColours, drop = F) +
         scale_x_date(date_minor_breaks = "1 year", date_labels = "%Y", limits = c(myXmin - 10,myXmax + 10)) +
         theme_classic() +
