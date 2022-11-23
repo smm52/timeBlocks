@@ -67,7 +67,7 @@ pdc_treatment <- function(serialDf, startDates, endDates, atcCode = c(), refillP
   }
   
   # check block length
-  if (refillPeriod <= 0) {
+  if (any(refillPeriod <= 0)) {
     stop("The refill period cannot be 0 or negative")
   }
   
