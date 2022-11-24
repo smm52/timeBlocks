@@ -355,7 +355,7 @@ pdc_treatment <- function(serialDf, startDates, endDates, atcCode = c(), refillP
                       dimnames = list(paste0(patientList,'_0'),colnames(treatmentTable)), byrow = T)
     treatmentTable <- rbind(treatmentTable, newRows)
     myResultsTreatment <- calculateAdherences(treatmentTable[which(grepl('_0$',rownames(treatmentTable))),], 
-                                              startDates, endDates, refillPeriod)
+                                              startDates, endDates, min(refillPeriod))
     print(paste0('------------------------------------combine calculations (started: ',Sys.time(),')'))
     myResults <- bind_rows(myResults, myResultsTreatment)
   }
@@ -479,6 +479,9 @@ calculateMedicationSpecificAdherence <- function(treatmentRowNames, treatment, s
   treatmentRow[which(treatmentRow == 2)] <- NA
   myStart <- startDates[which(startDates$PATIENT == sub("_.*", "", treatmentRowNames)),'DAYS'][[1]]
   myEnd <- endDates[which(endDates$PATIENT == sub("_.*", "", treatmentRowNames)),'DAYS'][[1]]
+  if(length(refillPeriod) > 1){
+    refillPeriod <- refillPeriod[as.numeric(sub(".*_", "", treatmentRowNames))]
+  } 
   
   #overall adherence during the full follow-up
   result[1,'treatmentDaysFullTime'] <-  length(which(treatmentRow %in% c(0,1)))
